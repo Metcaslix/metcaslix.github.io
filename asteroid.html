@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Impact Simulator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #legend-panel {
+            width: 250px;
+            padding: 20px;
+            background-color: #e0e0e0;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            flex-shrink: 0; /* Prevent legend from shrinking */
+        }
+
+        #legend-panel h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slider-container label {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .slider-container input[type="range"] {
+            width: 100%;
+        }
+
+        .slider-container span {
+            font-size: 0.8em;
+            text-align: right;
+            color: #555;
+        }
+
+        #map-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333; /* Fallback if image fails */
+            overflow: hidden; /* Important for canvas behavior */
+            position: relative;
+        }
+
+        #mapCanvas {
+            border: 1px solid #000;
+            background-color: transparent; /* Image will be drawn by JS */
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+    <div id="legend-panel">
+        <h2>Impact Parameters</h2>
+        
+        <div class="slider-container">
+            <label for="asteroidSize">Asteroid Diameter (km):</label>
+            <input type="range" id="asteroidSize" min="1" max="50" value="10">
+            <span id="asteroidSizeValue">10 km</span>
+        </div>
+
+        <div class="slider-container">
+            <label for="debrisMultiplier">Debris Spread Factor:</label>
+            <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.5" step="0.1">
+            <span id="debrisMultiplierValue">1.5x</span>
+        </div>
+
+        <div class="slider-container">
+            <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label>
+            <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1">
+            <span id="shockwaveMultiplierValue">1.0x</span>
+        </div>
+    </div>
+    <div id="map-container">
+        <canvas id="mapCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        const mapContainer = document.getElementById('map-container');
+
+        const asteroidSizeSlider = document.getElementById('asteroidSize');
+        const debrisMultiplierSlider = document.getElementById('debrisMultiplier');
+        const shockwaveMultiplierSlider = document.getElementById('shockwaveMultiplier');
+        const asteroidSizeValueDisplay = document.getElementById('asteroidSizeValue');
+        const debrisMultiplierValueDisplay = document.getElementById('debrisMultiplierValue');
+        const shockwaveMultiplierValueDisplay = document.getElementById('shockwaveMultiplierValue');
+
+        let canvasWidth, canvasHeight;
+
+        // --- Image, Zoom, and Pan State ---
+        const backgroundImage = new Image();
+        let imageLoaded = false;
+        // New image URL:
+        const imageUrl = 'north_america.jpg';
+        // Expected natural dimensions of the above image: 2000 x 2000
+
+        let zoomLevel = 1.0;
+        let viewOffsetX = 0; 
+        let viewOffsetY = 0;
+
+        const MIN_ZOOM = 0.2;
+        const MAX_ZOOM = 5.0; // You had 5.0, I'll keep it. My prev suggestion was 10.0
+
+        let isPanning = false;
+        // let lastMouseX = 0; // Not used with the current pan logic, was part of original pan
+        // let lastMouseY = 0; // Not used with the current pan logic
+
+        // --- Click vs Pan logic variables ---
+        let panStartX = 0;
+        let panStartY = 0;
+        let didPan = false;
+
+
+        // --- Simulation State ---
+        let simulationState = 'IDLE';
+        let meteor = {
+            startX: 0, startY: 0,
+            targetX: 0, targetY: 0,
+            currentX: 0, currentY: 0,
+            size: 5,
+            progress: 0,
+            animationDuration: 1500,
+            startTime: 0
+        };
+        
+        let impactData = {
+            x: 0, y: 0,
+            targetDirectRadius: 0, currentDirectRadius: 0,
+            targetDebrisRadius: 0, currentDebrisRadius: 0,
+            targetSeismicRadius: 0, currentSeismicRadius: 0,
+            targetFalloutRadius: 0, currentFalloutRadius: 0,
+            animationStartTime: 0,
+            animationDuration: 2000,
+            directSpeedFactor: 4.0, debrisSpeedFactor: 2.5,
+            seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0 
+        };
+
+        // City coordinates (X, Y) are hard coded by user. They are accurate. Do NOT touch or change them.
+        const cities = [
+            { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 },
+            { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 },
+            { name: "PHX", x: 560, y: 450 }, { name: "TOR", x: 825, y: 345 },
+            { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 },
+            { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 },
+            { name: "DAL", x: 625, y: 385 }, { name: "SEA", x: 495, y: 310 },
+            { name: "DEN", x: 750, y: 850 },  { name: "DC",  x: 845, y: 395 }, // Note: DEN y-coord seems high for Denver, might be a typo or specific map feature.
+            { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 },
+            { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }
+        ];
+
+        backgroundImage.onload = () => {
+            imageLoaded = true;
+            console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}. Ensure this matches your file for city coords.`);
+            setInitialView();
+            // draw(); // draw() is now called continuously from requestAnimationFrame once started
+        };
+        backgroundImage.onerror = () => {
+            console.error("Failed to load background image from:", imageUrl);
+            imageLoaded = false;
+            // draw(); // draw() is now called continuously
+        };
+        backgroundImage.src = imageUrl;
+
+        function setInitialView() {
+            if (!imageLoaded) return;
+            
+            const imgAspect = backgroundImage.naturalWidth / backgroundImage.naturalHeight;
+            const canvasAspect = canvas.width / canvas.height;
+
+            if (imgAspect > canvasAspect) {
+                zoomLevel = canvas.width / backgroundImage.naturalWidth;
+            } else {
+                zoomLevel = canvas.height / backgroundImage.naturalHeight;
+            }
+            zoomLevel *= 0.95; 
+            zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel));
+
+            viewOffsetX = (backgroundImage.naturalWidth / 2) - (canvas.width / 2 / zoomLevel);
+            viewOffsetY = (backgroundImage.naturalHeight / 2) - (canvas.height / 2 / zoomLevel);
+            
+            constrainViewOffset();
+        }
+
+        function resizeCanvas() {
+            canvasWidth = mapContainer.clientWidth;
+            canvasHeight = mapContainer.clientHeight;
+            
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            if(imageLoaded) {
+                setInitialView();
+            }
+        }
+
+        function screenToWorld(screenX, screenY) {
+            return {
+                x: (screenX / zoomLevel) + viewOffsetX,
+                y: (screenY / zoomLevel) + viewOffsetY
+            };
+        }
+
+        function worldToScreen(worldX, worldY) {
+            return {
+                x: (worldX - viewOffsetX) * zoomLevel,
+                y: (worldY - viewOffsetY) * zoomLevel
+            };
+        }
+        
+        function constrainViewOffset() {
+            if (!imageLoaded) return;
+            const maxOffsetX = backgroundImage.naturalWidth - (canvas.width / zoomLevel) * 0.1; 
+            const maxOffsetY = backgroundImage.naturalHeight - (canvas.height / zoomLevel) * 0.1;
+            const minOffsetX = -(canvas.width / zoomLevel) * 0.9; 
+            const minOffsetY = -(canvas.height / zoomLevel) * 0.9;
+
+            viewOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, viewOffsetX));
+            viewOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, viewOffsetY));
+        }
+
+        function drawBackgroundImage() {
+            if (!imageLoaded) {
+                ctx.fillStyle = '#555';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.font = "16px Arial";
+                ctx.fillText("Background image ('north_america.jpg') loading or failed.", canvas.width/2, canvas.height/2);
+                ctx.fillText("Make sure it's in the same folder as the HTML file.", canvas.width/2, canvas.height/2 + 20);
+                return;
+            }
+            ctx.drawImage(
+                backgroundImage,
+                viewOffsetX, viewOffsetY,
+                canvas.width / zoomLevel, canvas.height / zoomLevel,
+                0, 0,
+                canvas.width, canvas.height
+            );
+        }
+        
+        function drawCityLabels() {
+            if (!imageLoaded) return;
+            
+            const baseFontSize = 10; // User's value
+            const baseDotRadius = 2.5; // User's value
+            const currentFontSize = Math.max(5, baseFontSize * zoomLevel); // Keep min font size
+            const dotRadius = Math.max(1, baseDotRadius * zoomLevel);     // Keep min dot radius
+
+            ctx.font = `${currentFontSize}px Arial`; // Apply font size for both fill and stroke
+            ctx.textAlign = 'left';
+            
+            cities.forEach(city => {
+                const screenPos = worldToScreen(city.x, city.y);
+                
+                if (screenPos.x < -30 || screenPos.x > canvas.width + 30 || 
+                    screenPos.y < -30 || screenPos.y > canvas.height + 30) { 
+                    return;
+                }
+
+                // Draw Dot
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                // User had lineWidth 0.5 for dot. Let's make it responsive to zoom like my previous suggestion.
+                ctx.lineWidth = Math.max(0.5, 1 / zoomLevel); 
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, dotRadius, 0, Math.PI * 2);
+                ctx.fill();
+                if (zoomLevel > 0.2) ctx.stroke(); // Stroke dot if reasonably zoomed
+
+                // Draw Text with Outline
+                if (zoomLevel > 0.25) { 
+                    const textX = screenPos.x + (dotRadius * 1.5);
+                    const textY = screenPos.y + (dotRadius * 0.5);
+                    
+                    // Settings for text outline
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = Math.max(0.25, 0.75 / zoomLevel); // Thinner line for text outline
+                    ctx.strokeText(city.name, textX, textY);
+                    
+                    // Settings for text fill
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(city.name, textX, textY);
+                }
+            });
+        }
+
+        function drawMeteor() {
+            if (simulationState !== 'ANIMATING_METEOR') return;
+
+            const elapsed = Date.now() - meteor.startTime;
+            meteor.progress = Math.min(1, elapsed / meteor.animationDuration);
+            const targetScreenPos = worldToScreen(meteor.targetX, meteor.targetY);
+            
+            meteor.currentX = meteor.startX + (targetScreenPos.x - meteor.startX) * meteor.progress;
+            meteor.currentY = meteor.startY + (targetScreenPos.y - meteor.startY) * meteor.progress;
+
+            const meteorScreenSize = meteor.size * zoomLevel;
+
+            ctx.beginPath();
+            ctx.arc(meteor.currentX, meteor.currentY,  Math.max(1, meteorScreenSize), 0, Math.PI * 2);
+            ctx.fillStyle = 'orangered';
+            ctx.fill();
+            
+            if (meteor.progress > 0.05 && meteorScreenSize > 0.5) {
+                const tailLength = meteorScreenSize * 3;
+                const dx = targetScreenPos.x - meteor.startX;
+                const dy = targetScreenPos.y - meteor.startY;
+                 if (dx !== 0 || dy !== 0) {
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const tailX = meteor.currentX - (dx/dist) * tailLength;
+                    const tailY = meteor.currentY - (dy/dist) * tailLength;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(tailX, tailY);
+                    ctx.lineTo(meteor.currentX, meteor.currentY);
+                    ctx.strokeStyle = 'rgba(255, 165, 0, 0.5)';
+                    ctx.lineWidth = Math.max(0.5, meteorScreenSize * 0.8);
+                    ctx.stroke();
+                }
+            }
+
+            if (meteor.progress >= 1) {
+                simulationState = 'ANIMATING_IMPACT_EXPANSION';
+                calculateImpactEffectSizes();
+                impactData.animationStartTime = Date.now();
+                if (impactData.targetFalloutRadius > 0) {
+                    impactData.animationDuration = Math.max(1500, Math.min(5000, impactData.targetFalloutRadius * 0.1 * zoomLevel));
+                } else {
+                    impactData.animationDuration = 2000;
+                }
+            }
+        }
+        
+        function calculateImpactEffectSizes() {
+            if (!imageLoaded) return; // Added safety check
+            const baseSizeParam = parseFloat(asteroidSizeSlider.value);
+            const debrisMult = parseFloat(debrisMultiplierSlider.value);
+            const shockwaveMult = parseFloat(shockwaveMultiplierSlider.value);
+
+            // User's calculation: (backgroundImage.naturalWidth / 5000) * 20;
+            // Assuming 5000km is a reference width for NA content on their map image
+            const worldPixelsPerKm_base = (backgroundImage.naturalWidth / 5000); 
+            const visualMultiplier = 20; // User's multiplier
+
+            impactData.targetDirectRadius = baseSizeParam * 0.25 * worldPixelsPerKm_base * visualMultiplier;
+            impactData.targetDebrisRadius = baseSizeParam * 0.8 * debrisMult * worldPixelsPerKm_base * visualMultiplier;
+            impactData.targetSeismicRadius = baseSizeParam * 1.5 * shockwaveMult * worldPixelsPerKm_base * visualMultiplier;
+            impactData.targetFalloutRadius = baseSizeParam * 2.5 * debrisMult * worldPixelsPerKm_base * visualMultiplier;
+
+            impactData.currentDirectRadius = 0;
+            impactData.currentDebrisRadius = 0;
+            impactData.currentSeismicRadius = 0;
+            impactData.currentFalloutRadius = 0;
+        }
+
+        function drawImpactEffects() {
+            if (simulationState !== 'ANIMATING_IMPACT_EXPANSION' || !impactData.x) return;
+
+            const elapsed = Date.now() - impactData.animationStartTime;
+
+            function getAnimatedRadius(targetRadius, speedFactor) {
+                const effectiveDuration = impactData.animationDuration / speedFactor;
+                const progress = Math.min(1, elapsed / effectiveDuration);
+                return targetRadius * progress;
+            }
+
+            impactData.currentFalloutRadius = getAnimatedRadius(impactData.targetFalloutRadius, impactData.falloutSpeedFactor);
+            impactData.currentSeismicRadius = getAnimatedRadius(impactData.targetSeismicRadius, impactData.seismicSpeedFactor);
+            impactData.currentDebrisRadius = getAnimatedRadius(impactData.targetDebrisRadius, impactData.debrisSpeedFactor);
+            impactData.currentDirectRadius = getAnimatedRadius(impactData.targetDirectRadius, impactData.directSpeedFactor);
+            
+            const screenPos = worldToScreen(impactData.x, impactData.y);
+
+            ctx.globalAlpha = 0.6;
+
+            const drawRing = (worldRadius, color) => {
+                if (worldRadius <=0) return;
+                const screenRadius = worldRadius * zoomLevel;
+                if (screenRadius < 0.5) return;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, screenRadius, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            };
+
+            drawRing(impactData.currentFalloutRadius, 'rgba(100, 100, 100, 0.7)');
+            drawRing(impactData.currentSeismicRadius, 'rgba(255, 140, 0, 0.8)');
+            drawRing(impactData.currentDebrisRadius, 'rgba(139, 69, 19, 0.9)');
+            drawRing(impactData.currentDirectRadius, 'rgba(255, 69, 0, 1.0)');
+            
+            ctx.globalAlpha = 1.0;
+        }
+
+        let animationFrameId = null;
+        function draw() { // Combined from user's version
+            animationFrameId = requestAnimationFrame(draw); // Ensure loop continues
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackgroundImage();
+            drawCityLabels();
+
+            if (simulationState === 'ANIMATING_METEOR') {
+                drawMeteor();
+            } else if (simulationState === 'ANIMATING_IMPACT_EXPANSION') {
+                drawImpactEffects();
+            }
+        }
+
+        // --- Event Handlers (using user's refined click/pan logic) ---
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only pan with left mouse button
+            isPanning = true; 
+            didPan = false; 
+            panStartX = e.clientX; // User's pan logic uses panStartX/Y
+            panStartY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+
+            const dxScreen = e.clientX - panStartX; // Use panStartX/Y for delta
+            const dyScreen = e.clientY - panStartY;
+
+            if (!didPan && (Math.abs(dxScreen) > 3 || Math.abs(dyScreen) > 3)) {
+                didPan = true;
+            }
+            
+            if (didPan) { 
+              viewOffsetX -= dxScreen / zoomLevel;
+              viewOffsetY -= dyScreen / zoomLevel;
+              panStartX = e.clientX; // Update start for next delta
+              panStartY = e.clientY;
+              constrainViewOffset();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => { 
+            if (e.button !== 0) return;
+            if (isPanning && !didPan) { // If mousedown occurred but no significant pan
+                handleCanvasClick(e);
+            }
+            isPanning = false;
+            didPan = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (isPanning) { // User's logic
+                isPanning = false;
+                didPan = false; // Ensure didPan is also reset
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top; 
+
+            const worldMouseBeforeZoom = screenToWorld(mouseX, mouseY);
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9; // User's zoom factor
+            const newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zoomFactor));
+            
+            if (newZoomLevel !== zoomLevel) { // Only update if zoom actually changed
+                zoomLevel = newZoomLevel;
+                viewOffsetX = worldMouseBeforeZoom.x - (mouseX / zoomLevel);
+                viewOffsetY = worldMouseBeforeZoom.y - (mouseY / zoomLevel);
+                constrainViewOffset();
+            }
+        });
+
+        function handleCanvasClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const clickX_screen = event.clientX - rect.left;
+            const clickY_screen = event.clientY - rect.top;
+
+            const worldClick = screenToWorld(clickX_screen, clickY_screen);
+
+            simulationState = 'ANIMATING_METEOR';
+            meteor.targetX = worldClick.x;
+            meteor.targetY = worldClick.y;
+            
+            meteor.startX = Math.random() * canvas.width;
+            meteor.startY = -30; 
+            
+            meteor.currentX = meteor.startX;
+            meteor.currentY = meteor.startY;
+            meteor.progress = 0;
+            meteor.startTime = Date.now();
+            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); // User's meteor size
+            
+            impactData.x = worldClick.x;
+            impactData.y = worldClick.y;
+            impactData.currentDirectRadius = 0;
+            impactData.currentDebrisRadius = 0;
+            impactData.currentSeismicRadius = 0;
+            impactData.currentFalloutRadius = 0;
+        }
+
+        function updateImpactOnSliderChange() {
+            if (simulationState === 'ANIMATING_IMPACT_EXPANSION' && impactData.x && imageLoaded) { // Added imageLoaded check
+                const oldTargets = { 
+                    direct: impactData.targetDirectRadius, debris: impactData.targetDebrisRadius,
+                    seismic: impactData.targetSeismicRadius, fallout: impactData.targetFalloutRadius
+                };
+                const oldCurrents = {
+                    direct: impactData.currentDirectRadius, debris: impactData.currentDebrisRadius,
+                    seismic: impactData.currentSeismicRadius, fallout: impactData.currentFalloutRadius
+                };
+
+                calculateImpactEffectSizes();
+
+                const elapsed = Date.now() - impactData.animationStartTime;
+                if (elapsed < impactData.animationDuration) {
+                    if(oldTargets.direct > 0) impactData.currentDirectRadius = (oldCurrents.direct / oldTargets.direct) * impactData.targetDirectRadius; else impactData.currentDirectRadius=0;
+                    if(oldTargets.debris > 0) impactData.currentDebrisRadius = (oldCurrents.debris / oldTargets.debris) * impactData.targetDebrisRadius; else impactData.currentDebrisRadius=0;
+                    if(oldTargets.seismic > 0) impactData.currentSeismicRadius = (oldCurrents.seismic / oldTargets.seismic) * impactData.targetSeismicRadius; else impactData.currentSeismicRadius=0;
+                    if(oldTargets.fallout > 0) impactData.currentFalloutRadius = (oldCurrents.fallout / oldTargets.fallout) * impactData.targetFalloutRadius; else impactData.currentFalloutRadius=0;
+                } else { 
+                    impactData.currentDirectRadius = impactData.targetDirectRadius;
+                    impactData.currentDebrisRadius = impactData.targetDebrisRadius;
+                    impactData.currentSeismicRadius = impactData.targetSeismicRadius;
+                    impactData.currentFalloutRadius = impactData.targetFalloutRadius;
+                }
+                impactData.currentDirectRadius = Math.min(impactData.currentDirectRadius || 0, impactData.targetDirectRadius);
+                impactData.currentDebrisRadius = Math.min(impactData.currentDebrisRadius || 0, impactData.targetDebrisRadius);
+                impactData.currentSeismicRadius = Math.min(impactData.currentSeismicRadius || 0, impactData.targetSeismicRadius);
+                impactData.currentFalloutRadius = Math.min(impactData.currentFalloutRadius || 0, impactData.targetFalloutRadius);
+            }
+             meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); // User's meteor size
+        }
+
+        asteroidSizeSlider.addEventListener('input', (e) => {
+            asteroidSizeValueDisplay.textContent = `${e.target.value} km`;
+            updateImpactOnSliderChange();
+        });
+        debrisMultiplierSlider.addEventListener('input', (e) => {
+            debrisMultiplierValueDisplay.textContent = `${e.target.value}x`;
+            updateImpactOnSliderChange();
+        });
+        shockwaveMultiplierSlider.addEventListener('input', (e) => {
+            shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`;
+            updateImpactOnSliderChange();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        
+        resizeCanvas(); 
+        if (!animationFrameId) { // Start the draw loop if it hasn't been started
+            draw();
+        }
+    </script>
+</body>
+</html>
