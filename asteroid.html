@@ -54,24 +54,25 @@
         let zoomLevel = 1.0; let viewOffsetX = 0; let viewOffsetY = 0; const MIN_ZOOM = 0.1; const MAX_ZOOM = 10.0;
         let isPanning = false; let panStartX = 0; let panStartY = 0; let didPan = false;
         let simulationState = 'IDLE'; const BASE_METEOR_ANIMATION_DURATION_AT_1X = 5000; const MIN_ANIMATION_VELOCITY_REFERENCE = 10; 
-        let meteor = { startX: 0, startY: 0, targetX: 0, targetY: 0, currentX: 0, currentY: 0, size: 5, progress: 0, baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X, totalScaledElapsed: 0 }; // Initial base duration for 10km/s default
+        let meteor = { startX: 0, startY: 0, targetX: 0, targetY: 0, currentX: 0, currentY: 0, size: 5, progress: 0, baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X, totalScaledElapsed: 0 }; // Defaulted to slowest speed duration
         let impactData = { x: 0, y: 0, targetDirectRadius: 0, currentDirectRadius: 0, targetDebrisRadius: 0, currentDebrisRadius: 0, targetSeismicRadius: 0, currentSeismicRadius: 0, targetFalloutRadius: 0, currentFalloutRadius: 0, baseAnimationDuration: 4000, totalScaledElapsed: 0, directSpeedFactor: 4.0, debrisSpeedFactor: 2.5, seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0, overallIntensity: 1.0, horizontalStretchFactor: 1.0, verticalSquashFactor: 1.0 };
         let transitionParticles = []; let transitionEffectBaseDuration = 1500; let transitionEffectTotalScaledElapsed = 0; const PARTICLE_BASE_LIFE = 60; const PARTICLE_SIZE = 2;
+        // --- CITY COORDINATES ARE ACCURATE AS PER USER - DO NOT CHANGE ---
         const cities = [ { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 }, { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 }, { name: "PHX", x: 560, y: 450 }, { name: "TOR", x: 825, y: 345 }, { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 }, { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 }, { name: "DAL", x: 690, y: 455 }, { name: "SEA", x: 495, y: 310 }, { name: "DEN", x: 625, y: 370 },  { name: "DC",  x: 845, y: 395 }, { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 }, { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }];
         const MAX_X_STRETCH_AT_POLE = 0.8; const MAX_Y_SQUASH_AT_POLE = 0.7;   
 
         let audioCtx = null; 
-        const audioBuffers = {}; // Will store decoded AudioBuffers: { meteorApproach: AudioBuffer, ... }
+        const audioBuffers = {}; 
         let meteorApproachSoundNodes = { source: null, gainNode: null }; 
         let rumbleSoundNodes = { source: null, gainNode: null };
-        let audioSystemAttemptedInit = false; // To prevent multiple init attempts if first one fails
+        let audioSystemInitialized = false; 
 
         async function loadAudioFile(name, url) {
-            if (!audioCtx) { console.warn("AudioContext not available for loading:", name); return; }
-            // If already loaded (is an AudioBuffer) or definitively failed (is null), don't try again.
+            if (!audioCtx) { console.warn("AudioContext not ready, cannot load:", name); return; }
             if (audioBuffers[name] || audioBuffers[name] === null) return; 
             
             console.log(`Attempting to load audio: ${name} from ${url}`);
+            audioBuffers[name] = 'loading'; // Mark as attempting to load
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -79,34 +80,27 @@
                     throw new Error(`HTTP error! status: ${response.status} for ${url}`);
                 }
                 const arrayBuffer = await response.arrayBuffer();
-                // decodeAudioData can also throw if format is unsupported
                 const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 audioBuffers[name] = decodedBuffer; 
                 console.log(`Audio loaded and decoded: ${name}`);
             } catch (e) {
                 console.error(`Error loading or decoding audio ${name} from ${url}:`, e);
-                audioBuffers[name] = null; // Mark as failed
+                audioBuffers[name] = null; 
             }
         }
 
         function initializeAudioSystem() {
-            if (audioSystemAttemptedInit || !audioCtx) return; 
-            audioSystemAttemptedInit = true; // Mark that we've tried
+            if (audioSystemInitialized || !audioCtx) return; 
+            audioSystemInitialized = true; 
 
-            // IMPORTANT: Replace 'YOUR_SOUND_PATH/' with the actual relative or absolute paths.
-            // e.g., 'sounds/meteor_approaching.mp3' if in a 'sounds' subfolder.
             loadAudioFile('meteorApproach', 'sounds/meteor_approaching.mp3'); 
             loadAudioFile('explosion',    'sounds/explosion.mp3');          
             loadAudioFile('rumble',       'sounds/rumble.mp3');                 
             
-            console.log("Audio file loading initiated.");
+            console.log("Audio file loading process initiated.");
         }
 
-        backgroundImage.onload = () => { 
-            imageLoaded = true; 
-            console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}.`);
-            // Audio will be initialized on first user interaction (click)
-        };
+        backgroundImage.onload = () => { imageLoaded = true; console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}.`);};
         backgroundImage.onerror = () => { console.error("Failed to load background image from:", imageUrl); imageLoaded = false; };
         backgroundImage.src = imageUrl;
 
@@ -122,7 +116,7 @@
             if (simulationState !== 'ANIMATING_METEOR') return;
             meteor.totalScaledElapsed += scaledDeltaTime; 
             meteor.progress = Math.min(1, meteor.totalScaledElapsed / meteor.baseAnimationDuration);
-            if (audioCtx && meteorApproachSoundNodes.gainNode && audioBuffers.meteorApproach) {
+            if (audioCtx && meteorApproachSoundNodes.gainNode && audioBuffers.meteorApproach instanceof AudioBuffer) { // Check if it's an actual AudioBuffer
                 const gainValue = Math.pow(meteor.progress, 2) * 0.6; 
                 meteorApproachSoundNodes.gainNode.gain.setTargetAtTime(gainValue, audioCtx.currentTime, 0.01);
             }
@@ -144,7 +138,7 @@
             if (simulationState !== 'TRANSITION_EFFECT') return; 
             transitionEffectTotalScaledElapsed += scaledDeltaTime; let activeParticles = 0;
             const timeFactorForLife = scaledDeltaTime / (1000 / 60); 
-            if (audioCtx && rumbleSoundNodes.gainNode && audioBuffers.rumble) {
+            if (audioCtx && rumbleSoundNodes.gainNode && audioBuffers.rumble instanceof AudioBuffer) {
                 const progress = Math.min(1, transitionEffectTotalScaledElapsed / transitionEffectBaseDuration);
                 const maxRumbleVolume = 0.2 + impactData.overallIntensity * 0.3; 
                 const gainValue = progress * maxRumbleVolume; 
@@ -160,7 +154,31 @@
         function calculateImpactEffectSizes() { if (!imageLoaded) return; const bSP = parseFloat(asteroidSizeSlider.value); const cV = parseFloat(asteroidVelocitySlider.value); const dM = parseFloat(debrisMultiplierSlider.value); const sM = parseFloat(shockwaveMultiplierSlider.value); const rV = 20.0; const sCV = Math.max(0.1, cV); impactData.overallIntensity = Math.sqrt(sCV / rV); const eMWK = 6000; const wPPK = backgroundImage.naturalWidth / eMWK; const visM = 30; impactData.targetDirectRadius = bSP * 0.25 * wPPK * visM * impactData.overallIntensity; impactData.targetDebrisRadius = bSP * 0.8 * dM * wPPK * visM * impactData.overallIntensity; impactData.targetSeismicRadius = bSP * 1.5 * sM * wPPK * visM * impactData.overallIntensity; impactData.targetFalloutRadius = bSP * 2.5 * dM * wPPK * visM * impactData.overallIntensity; impactData.currentDirectRadius = 0; impactData.currentDebrisRadius = 0; impactData.currentSeismicRadius = 0; impactData.currentFalloutRadius = 0; const yRatio = Math.max(0, Math.min(1, (backgroundImage.naturalHeight - impactData.y) / backgroundImage.naturalHeight)); impactData.horizontalStretchFactor = 1.0 + (yRatio * MAX_X_STRETCH_AT_POLE); impactData.horizontalStretchFactor = Math.max(1.0, impactData.horizontalStretchFactor); impactData.verticalSquashFactor = 1.0 - (yRatio * MAX_Y_SQUASH_AT_POLE); impactData.verticalSquashFactor = Math.max(1.0 - MAX_Y_SQUASH_AT_POLE, Math.min(1.0, impactData.verticalSquashFactor)); }
         function drawTurbulentRing(cX, cY, cR, tR, clr, seg = 60, bRP = 0.25, bAP = 0.08) { if (cR <= 0.1) return; const sPC = worldToScreen(cX, cY); let dmp = (tR > 0) ? Math.min(1, cR / (tR * 0.8)) : 0; dmp = dmp * dmp; let mROF = bRP * (0.75 + impactData.overallIntensity * 0.5) * (1 - dmp); let mAO = bAP * (0.5 + impactData.overallIntensity * 0.25) * (1 - dmp); ctx.save(); ctx.translate(sPC.x, sPC.y); ctx.scale(impactData.horizontalStretchFactor, impactData.verticalSquashFactor); ctx.beginPath(); for (let i = 0; i <= seg; i++) { const bA = (i / seg) * Math.PI * 2; const aO = (Math.random() - 0.5) * 2 * mAO; const pA = bA + aO; const uRS = cR * zoomLevel; const bF = Math.sin(bA * 3 + Date.now() * 0.001) * 0.5 + 0.5; const rOLF = bF * mROF * 0.6 * uRS * (Math.random() * 0.3 + 0.7); const rOHF = (Math.random() - 0.5) * 2 * mROF * 0.4 * uRS * (Math.random() * 0.5 + 0.5); const pR = uRS + rOLF + rOHF; const x = Math.cos(pA) * Math.max(0, pR); const y = Math.sin(pA) * Math.max(0, pR); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.closePath(); ctx.fillStyle = clr; ctx.fill(); ctx.restore(); }
         function drawStaticRing(cX, cY, rad, clr) { if (rad <= 0) return; const sPC = worldToScreen(cX, cY); const sR = rad * zoomLevel; if (sR < 0.5) return; ctx.save(); ctx.translate(sPC.x, sPC.y); ctx.scale(impactData.horizontalStretchFactor, impactData.verticalSquashFactor); ctx.beginPath(); ctx.arc(0, 0, sR, 0, Math.PI * 2); ctx.fillStyle = clr; ctx.fill(); ctx.restore();}
-        function drawImpactEffects(scaledDeltaTime) { if (simulationState === 'ANIMATING_IMPACT_EXPANSION') { if (!impactData.x) return; impactData.totalScaledElapsed += scaledDeltaTime; if (audioCtx && rumbleSoundNodes.gainNode && audioBuffers.rumble) { const progress = Math.min(1, impactData.totalScaledElapsed / impactData.baseAnimationDuration); const maxRumbleVolume = 0.2 + impactData.overallIntensity * 0.3; const gainValue = maxRumbleVolume * (1 - Math.pow(progress, 3)); rumbleSoundNodes.gainNode.gain.setTargetAtTime(Math.max(0, gainValue), audioCtx.currentTime, 0.02); } function getAR(tR, sF) { const eBD = impactData.baseAnimationDuration / sF; const prog = Math.min(1, impactData.totalScaledElapsed / eBD); return tR * prog; } impactData.currentFalloutRadius = getAR(impactData.targetFalloutRadius, impactData.falloutSpeedFactor); impactData.currentSeismicRadius = getAR(impactData.targetSeismicRadius, impactData.seismicSpeedFactor); impactData.currentDebrisRadius = getAR(impactData.targetDebrisRadius, impactData.debrisSpeedFactor); impactData.currentDirectRadius = getAR(impactData.targetDirectRadius, impactData.directSpeedFactor); ctx.globalAlpha = 0.75; drawTurbulentRing(impactData.x, impactData.y, impactData.currentFalloutRadius, impactData.targetFalloutRadius, 'rgba(100, 100, 100, 0.7)', 70, 0.25, 0.08); drawTurbulentRing(impactData.x, impactData.y, impactData.currentSeismicRadius, impactData.targetSeismicRadius, 'rgba(255, 140, 0, 0.8)', 60, 0.22, 0.07); drawTurbulentRing(impactData.x, impactData.y, impactData.currentDebrisRadius, impactData.targetDebrisRadius, 'rgba(139, 69, 19, 0.9)', 50, 0.20, 0.06); drawTurbulentRing(impactData.x, impactData.y, impactData.currentDirectRadius, impactData.targetDirectRadius, 'rgba(255, 69, 0, 1.0)', 40, 0.18, 0.05); ctx.globalAlpha = 1.0; let sRBD = impactData.baseAnimationDuration / Math.min(impactData.directSpeedFactor, impactData.debrisSpeedFactor, impactData.seismicSpeedFactor, impactData.falloutSpeedFactor); if (impactData.totalScaledElapsed >= sRBD) { stopRumbleSound(); simulationState = 'SHOWING_STATIC_IMPACT'; impactData.currentDirectRadius = impactData.targetDirectRadius; impactData.currentDebrisRadius = impactData.targetDebrisRadius; impactData.currentSeismicRadius = impactData.targetSeismicRadius; impactData.currentFalloutRadius = impactData.targetFalloutRadius; }} else if (simulationState === 'SHOWING_STATIC_IMPACT') { if (!impactData.x) return; ctx.globalAlpha = 0.6; drawStaticRing(impactData.x, impactData.y, impactData.currentFalloutRadius, 'rgba(100, 100, 100, 0.7)'); drawStaticRing(impactData.x, impactData.y, impactData.currentSeismicRadius, 'rgba(255, 140, 0, 0.8)'); drawStaticRing(impactData.x, impactData.y, impactData.currentDebrisRadius, 'rgba(139, 69, 19, 0.9)'); drawStaticRing(impactData.x, impactData.y, impactData.currentDirectRadius, 'rgba(255, 69, 0, 1.0)'); ctx.globalAlpha = 1.0; }}
+        function drawImpactEffects(scaledDeltaTime) { 
+            if (simulationState === 'ANIMATING_IMPACT_EXPANSION') { 
+                if (!impactData.x) return; 
+                impactData.totalScaledElapsed += scaledDeltaTime; 
+                if (audioCtx && rumbleSoundNodes.gainNode && audioBuffers.rumble instanceof AudioBuffer) {
+                    const progress = Math.min(1, impactData.totalScaledElapsed / impactData.baseAnimationDuration);
+                    const maxRumbleVolume = 0.2 + impactData.overallIntensity * 0.3;
+                    const gainValue = maxRumbleVolume * (1 - Math.pow(progress, 3)); 
+                    rumbleSoundNodes.gainNode.gain.setTargetAtTime(Math.max(0, gainValue), audioCtx.currentTime, 0.02);
+                }
+                function getAR(tR, sF) { const eBD = impactData.baseAnimationDuration / sF; const prog = Math.min(1, impactData.totalScaledElapsed / eBD); return tR * prog; } 
+                impactData.currentFalloutRadius = getAR(impactData.targetFalloutRadius, impactData.falloutSpeedFactor); impactData.currentSeismicRadius = getAR(impactData.targetSeismicRadius, impactData.seismicSpeedFactor); impactData.currentDebrisRadius = getAR(impactData.targetDebrisRadius, impactData.debrisSpeedFactor); impactData.currentDirectRadius = getAR(impactData.targetDirectRadius, impactData.directSpeedFactor); 
+                ctx.globalAlpha = 0.75; drawTurbulentRing(impactData.x, impactData.y, impactData.currentFalloutRadius, impactData.targetFalloutRadius, 'rgba(100, 100, 100, 0.7)', 70, 0.25, 0.08); drawTurbulentRing(impactData.x, impactData.y, impactData.currentSeismicRadius, impactData.targetSeismicRadius, 'rgba(255, 140, 0, 0.8)', 60, 0.22, 0.07); drawTurbulentRing(impactData.x, impactData.y, impactData.currentDebrisRadius, impactData.targetDebrisRadius, 'rgba(139, 69, 19, 0.9)', 50, 0.20, 0.06); drawTurbulentRing(impactData.x, impactData.y, impactData.currentDirectRadius, impactData.targetDirectRadius, 'rgba(255, 69, 0, 1.0)', 40, 0.18, 0.05); 
+                ctx.globalAlpha = 1.0; 
+                let sRBD = impactData.baseAnimationDuration / Math.min(impactData.directSpeedFactor, impactData.debrisSpeedFactor, impactData.seismicSpeedFactor, impactData.falloutSpeedFactor); 
+                if (impactData.totalScaledElapsed >= sRBD) { 
+                    stopRumbleSound(); simulationState = 'SHOWING_STATIC_IMPACT'; 
+                    impactData.currentDirectRadius = impactData.targetDirectRadius; impactData.currentDebrisRadius = impactData.targetDebrisRadius; impactData.currentSeismicRadius = impactData.targetSeismicRadius; impactData.currentFalloutRadius = impactData.targetFalloutRadius; 
+                }
+            } else if (simulationState === 'SHOWING_STATIC_IMPACT') { 
+                if (!impactData.x) return; ctx.globalAlpha = 0.6; 
+                drawStaticRing(impactData.x, impactData.y, impactData.currentFalloutRadius, 'rgba(100, 100, 100, 0.7)'); drawStaticRing(impactData.x, impactData.y, impactData.currentSeismicRadius, 'rgba(255, 140, 0, 0.8)'); drawStaticRing(impactData.x, impactData.y, impactData.currentDebrisRadius, 'rgba(139, 69, 19, 0.9)'); drawStaticRing(impactData.x, impactData.y, impactData.currentDirectRadius, 'rgba(255, 69, 0, 1.0)'); 
+                ctx.globalAlpha = 1.0; 
+            }
+        }
         let animationFrameId = null; let lastTimestamp = 0; function draw(timestamp) { animationFrameId = requestAnimationFrame(draw); if (lastTimestamp === 0) lastTimestamp = timestamp; const dT = timestamp - lastTimestamp; lastTimestamp = timestamp; const cTS = parseFloat(timeScaleSlider.value); const sDT = Math.min(dT, 100) * cTS; ctx.clearRect(0, 0, canvas.width, canvas.height); drawBackgroundImage(); drawCityLabels(); if (simulationState === 'ANIMATING_METEOR') drawMeteor(sDT); else if (simulationState === 'TRANSITION_EFFECT') drawTransitionEffect(sDT); else if (simulationState === 'ANIMATING_IMPACT_EXPANSION' || simulationState === 'SHOWING_STATIC_IMPACT') drawImpactEffects(sDT); }
         let pointerDown = false; let pointerStartX = 0; let pointerStartY = 0; let hasPointerMovedEnoughForPan = false; function handlePointerDown(cX, cY) { pointerDown = true; isPanning = true; didPan = false; hasPointerMovedEnoughForPan = false; panStartX = cX; pointerStartX = cX; pointerStartY = cY; } function handlePointerMove(cX, cY) { if (!pointerDown) return; const dXFS = cX - pointerStartX; const dYFS = cY - pointerStartY; if (!hasPointerMovedEnoughForPan && (Math.abs(dXFS) > 5 || Math.abs(dYFS) > 5)) { hasPointerMovedEnoughForPan = true; didPan = true; } if (didPan) { const dXFP = cX - panStartX; const dYFP = cY - panStartY; viewOffsetX -= dXFP / zoomLevel; viewOffsetY -= dYFP / zoomLevel; panStartX = cX; panStartY = cY; constrainViewOffset(); }} function handlePointerUp(cX, cY) { if (!pointerDown) return; if (isPanning && !didPan && !hasPointerMovedEnoughForPan) { handleCanvasClick({clientX: pointerStartX, clientY: pointerStartY}); } pointerDown = false; isPanning = false; didPan = false; hasPointerMovedEnoughForPan = false; }
         canvas.addEventListener('mousedown', (e) => { if (e.button !== 0) return; handlePointerDown(e.clientX, e.clientY); }); window.addEventListener('mousemove', (e) => handlePointerMove(e.clientX, e.clientY)); window.addEventListener('mouseup', (e) => { if (e.button !== 0) return; handlePointerUp(e.clientX, e.clientY);}); canvas.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { e.preventDefault(); const touch = e.touches[0]; handlePointerDown(touch.clientX, touch.clientY); }}, { passive: false }); canvas.addEventListener('touchmove', (e) => { if (e.touches.length === 1) { e.preventDefault(); const touch = e.touches[0]; handlePointerMove(touch.clientX, touch.clientY); }}, { passive: false }); canvas.addEventListener('touchend', (e) => { if (e.changedTouches.length === 1) { e.preventDefault(); const touch = e.changedTouches[0]; handlePointerUp(touch.clientX, touch.clientY); }});
@@ -176,9 +194,9 @@
                     if (audioCtx.state === 'suspended') { 
                         audioCtx.resume().then(() => {
                             console.log("AudioContext resumed on click.");
-                            if (!audioSystemAttemptedInit) initializeAudioSystem(); 
+                            if (!audioSystemInitialized) initializeAudioSystem(); 
                         });
-                    } else if (!audioSystemAttemptedInit) {
+                    } else if (!audioSystemInitialized) {
                          initializeAudioSystem();
                     }
                 } catch (e) { 
@@ -187,9 +205,9 @@
             } else if (audioCtx.state === 'suspended') { 
                 audioCtx.resume().then(() => {
                     console.log("AudioContext resumed.");
-                    if (!audioSystemAttemptedInit) initializeAudioSystem();
+                    if (!audioSystemInitialized) initializeAudioSystem();
                 });
-            } else if (!audioSystemAttemptedInit) { // If context running but system not init
+            } else if (audioCtx && !audioSystemInitialized && audioCtx.state === 'running') { 
                  initializeAudioSystem();
             }
 
@@ -209,9 +227,20 @@
         function updateOnSliderChange() { if (simulationState === 'ANIMATING_IMPACT_EXPANSION' || simulationState === 'TRANSITION_EFFECT' || simulationState === 'SHOWING_STATIC_IMPACT') resetImpactVisuals(); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); }
         let currentView = 'desktop'; function applyViewMode(mode) { currentView = mode; if (mode === 'mobile') { document.body.classList.add('mobile-view-active'); toggleMobileButton.classList.add('active-view'); toggleDesktopButton.classList.remove('active-view'); } else { document.body.classList.remove('mobile-view-active'); toggleDesktopButton.classList.add('active-view'); toggleMobileButton.classList.remove('active-view'); } setTimeout(() => resizeCanvas(true), 50); } toggleDesktopButton.addEventListener('click', () => applyViewMode('desktop')); toggleMobileButton.addEventListener('click', () => applyViewMode('mobile')); function checkInitialView() { if (window.innerWidth <= 768) applyViewMode('mobile'); else applyViewMode('desktop'); }
         
-        function playSound(bufferName, loop = false, initialGain = 1.0) { if (!audioCtx || !audioBuffers[bufferName] || audioBuffers[bufferName] === null) { console.warn(`Cannot play sound: ${bufferName}. AudioContext not ready or buffer not loaded/failed.`); return null; } const source = audioCtx.createBufferSource(); source.buffer = audioBuffers[bufferName]; source.loop = loop; const gainNode = audioCtx.createGain(); gainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime); source.connect(gainNode).connect(audioCtx.destination); source.start(); return { source, gainNode }; }
+        function playSound(bufferName, loop = false, initialGain = 1.0) { 
+            if (!audioCtx || !(audioBuffers[bufferName] instanceof AudioBuffer)) { // Check if it's truly an AudioBuffer
+                if (audioBuffers[bufferName] !== 'loading') { // Don't warn if it's still in the process of loading
+                     console.warn(`Cannot play sound: ${bufferName}. AudioContext not ready or buffer not properly loaded.`);
+                }
+                return null; 
+            } 
+            const source = audioCtx.createBufferSource(); source.buffer = audioBuffers[bufferName]; source.loop = loop; 
+            const gainNode = audioCtx.createGain(); gainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime); 
+            source.connect(gainNode).connect(audioCtx.destination); source.start(); 
+            return { source, gainNode }; 
+        }
         function playMeteorApproachSound() { stopMeteorApproachSound(); const sound = playSound('meteorApproach', true, 0); if (sound) meteorApproachSoundNodes = sound; }
-        function stopMeteorApproachSound() { if (meteorApproachSoundNodes.source) { try { meteorApproachSoundNodes.source.stop(); } catch(e) {} meteorApproachSoundNodes.source.disconnect(); meteorApproachSoundNodes.gainNode.disconnect(); meteorApproachSoundNodes = { source: null, gainNode: null }; }}
+        function stopMeteorApproachSound() { if (meteorApproachSoundNodes.source) { try { meteorApproachSoundNodes.source.stop(); } catch(e) {} meteorApproachSoundNodes.source.disconnect(); if(meteorApproachSoundNodes.gainNode) meteorApproachSoundNodes.gainNode.disconnect(); meteorApproachSoundNodes = { source: null, gainNode: null }; }}
         function playExplosionSound() { const volume = 0.4 + impactData.overallIntensity * 0.6; playSound('explosion', false, Math.min(1.0, volume)); }
         function playRumbleSound() { stopRumbleSound(); const sound = playSound('rumble', true, 0); if (sound) rumbleSoundNodes = sound; }
         function stopRumbleSound() { if (rumbleSoundNodes.source) { if (rumbleSoundNodes.gainNode) { rumbleSoundNodes.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.15); setTimeout(() => { try { if(rumbleSoundNodes.source) rumbleSoundNodes.source.stop(); } catch(e) {} if(rumbleSoundNodes.source) rumbleSoundNodes.source.disconnect(); if(rumbleSoundNodes.gainNode) rumbleSoundNodes.gainNode.disconnect(); rumbleSoundNodes = { source: null, gainNode: null }; }, 200); } else { try { if(rumbleSoundNodes.source) rumbleSoundNodes.source.stop(); } catch(e) {} if(rumbleSoundNodes.source) rumbleSoundNodes.source.disconnect(); rumbleSoundNodes = { source: null, gainNode: null }; }}}
