@@ -23,7 +23,7 @@
             flex-direction: column;
             gap: 20px;
             overflow-y: auto;
-            flex-shrink: 0; /* Prevent legend from shrinking */
+            flex-shrink: 0;
         }
 
         #legend-panel h2 {
@@ -56,14 +56,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #333; /* Fallback if image fails */
-            overflow: hidden; /* Important for canvas behavior */
+            background-color: #333;
+            overflow: hidden;
             position: relative;
         }
 
         #mapCanvas {
             border: 1px solid #000;
-            background-color: transparent; /* Image will be drawn by JS */
+            background-color: transparent;
             cursor: crosshair;
         }
     </style>
@@ -79,9 +79,15 @@
         </div>
 
         <div class="slider-container">
+            <label for="asteroidVelocity">Asteroid Velocity (km/s):</label>
+            <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1">
+            <span id="asteroidVelocityValue">20 km/s</span>
+        </div>
+
+        <div class="slider-container">
             <label for="debrisMultiplier">Debris Spread Factor:</label>
-            <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.5" step="0.1">
-            <span id="debrisMultiplierValue">1.5x</span>
+            <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1">
+            <span id="debrisMultiplierValue">1.0x</span>
         </div>
 
         <div class="slider-container">
@@ -100,47 +106,41 @@
         const mapContainer = document.getElementById('map-container');
 
         const asteroidSizeSlider = document.getElementById('asteroidSize');
+        const asteroidVelocitySlider = document.getElementById('asteroidVelocity');
         const debrisMultiplierSlider = document.getElementById('debrisMultiplier');
         const shockwaveMultiplierSlider = document.getElementById('shockwaveMultiplier');
+
         const asteroidSizeValueDisplay = document.getElementById('asteroidSizeValue');
+        const asteroidVelocityValueDisplay = document.getElementById('asteroidVelocityValue');
         const debrisMultiplierValueDisplay = document.getElementById('debrisMultiplierValue');
         const shockwaveMultiplierValueDisplay = document.getElementById('shockwaveMultiplierValue');
 
         let canvasWidth, canvasHeight;
 
-        // --- Image, Zoom, and Pan State ---
         const backgroundImage = new Image();
         let imageLoaded = false;
-        // New image URL:
-        const imageUrl = 'north_america.jpg';
-        // Expected natural dimensions of the above image: 2000 x 2000
+        const imageUrl = 'north_america.jpg'; 
 
         let zoomLevel = 1.0;
         let viewOffsetX = 0; 
         let viewOffsetY = 0;
 
-        const MIN_ZOOM = 0.2;
-        const MAX_ZOOM = 5.0; // You had 5.0, I'll keep it. My prev suggestion was 10.0
+        const MIN_ZOOM = 0.1; 
+        const MAX_ZOOM = 10.0;
 
         let isPanning = false;
-        // let lastMouseX = 0; // Not used with the current pan logic, was part of original pan
-        // let lastMouseY = 0; // Not used with the current pan logic
-
-        // --- Click vs Pan logic variables ---
         let panStartX = 0;
         let panStartY = 0;
         let didPan = false;
 
-
-        // --- Simulation State ---
         let simulationState = 'IDLE';
+        const BASE_METEOR_ANIMATION_DURATION = 3000; 
+        const MIN_ANIMATION_VELOCITY_REFERENCE = 10; 
+
         let meteor = {
-            startX: 0, startY: 0,
-            targetX: 0, targetY: 0,
-            currentX: 0, currentY: 0,
-            size: 5,
-            progress: 0,
-            animationDuration: 1500,
+            startX: 0, startY: 0, targetX: 0, targetY: 0,
+            currentX: 0, currentY: 0, size: 5, progress: 0,
+            animationDuration: BASE_METEOR_ANIMATION_DURATION * (MIN_ANIMATION_VELOCITY_REFERENCE / 20),
             startTime: 0
         };
         
@@ -150,13 +150,11 @@
             targetDebrisRadius: 0, currentDebrisRadius: 0,
             targetSeismicRadius: 0, currentSeismicRadius: 0,
             targetFalloutRadius: 0, currentFalloutRadius: 0,
-            animationStartTime: 0,
-            animationDuration: 2000,
+            animationStartTime: 0, animationDuration: 2000,
             directSpeedFactor: 4.0, debrisSpeedFactor: 2.5,
             seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0 
         };
 
-        // City coordinates (X, Y) are hard coded by user. They are accurate. Do NOT touch or change them.
         const cities = [
             { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 },
             { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 },
@@ -164,21 +162,19 @@
             { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 },
             { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 },
             { name: "DAL", x: 625, y: 385 }, { name: "SEA", x: 495, y: 310 },
-            { name: "DEN", x: 750, y: 850 },  { name: "DC",  x: 845, y: 395 }, // Note: DEN y-coord seems high for Denver, might be a typo or specific map feature.
+            { name: "DEN", x: 750, y: 850 },  { name: "DC",  x: 845, y: 395 },
             { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 },
             { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }
         ];
 
         backgroundImage.onload = () => {
             imageLoaded = true;
-            console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}. Ensure this matches your file for city coords.`);
+            console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}. Ensure this matches your file (expected 1200x729 for current city coords).`);
             setInitialView();
-            // draw(); // draw() is now called continuously from requestAnimationFrame once started
         };
         backgroundImage.onerror = () => {
             console.error("Failed to load background image from:", imageUrl);
             imageLoaded = false;
-            // draw(); // draw() is now called continuously
         };
         backgroundImage.src = imageUrl;
 
@@ -262,43 +258,38 @@
         function drawCityLabels() {
             if (!imageLoaded) return;
             
-            const baseFontSize = 10; // User's value
-            const baseDotRadius = 2.5; // User's value
-            const currentFontSize = Math.max(5, baseFontSize * zoomLevel); // Keep min font size
-            const dotRadius = Math.max(1, baseDotRadius * zoomLevel);     // Keep min dot radius
+            const baseFontSize = 8;
+            const baseDotRadius = 1.5;
+            const currentFontSize = Math.max(5, baseFontSize * zoomLevel);
+            const dotRadius = Math.max(1, baseDotRadius * zoomLevel);
 
-            ctx.font = `${currentFontSize}px Arial`; // Apply font size for both fill and stroke
+            ctx.font = `${currentFontSize}px Arial`;
             ctx.textAlign = 'left';
             
             cities.forEach(city => {
                 const screenPos = worldToScreen(city.x, city.y);
                 
                 if (screenPos.x < -30 || screenPos.x > canvas.width + 30 || 
-                    screenPos.y < -30 || screenPos.y > canvas.height + 30) { 
+                    screenPos.y < -30 || screenPos.y > canvas.height + 30) {
                     return;
                 }
 
-                // Draw Dot
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
-                // User had lineWidth 0.5 for dot. Let's make it responsive to zoom like my previous suggestion.
-                ctx.lineWidth = Math.max(0.5, 1 / zoomLevel); 
+                ctx.lineWidth = Math.max(0.5, 1 / zoomLevel);
                 ctx.beginPath();
                 ctx.arc(screenPos.x, screenPos.y, dotRadius, 0, Math.PI * 2);
                 ctx.fill();
-                if (zoomLevel > 0.2) ctx.stroke(); // Stroke dot if reasonably zoomed
+                if (zoomLevel > 0.2) ctx.stroke();
 
-                // Draw Text with Outline
                 if (zoomLevel > 0.25) { 
                     const textX = screenPos.x + (dotRadius * 1.5);
                     const textY = screenPos.y + (dotRadius * 0.5);
                     
-                    // Settings for text outline
                     ctx.strokeStyle = 'black';
-                    ctx.lineWidth = Math.max(0.25, 0.75 / zoomLevel); // Thinner line for text outline
+                    ctx.lineWidth = Math.max(0.25, 0.75 / zoomLevel); 
                     ctx.strokeText(city.name, textX, textY);
                     
-                    // Settings for text fill
                     ctx.fillStyle = 'white';
                     ctx.fillText(city.name, textX, textY);
                 }
@@ -318,7 +309,7 @@
             const meteorScreenSize = meteor.size * zoomLevel;
 
             ctx.beginPath();
-            ctx.arc(meteor.currentX, meteor.currentY,  Math.max(1, meteorScreenSize), 0, Math.PI * 2);
+            ctx.arc(meteor.currentX, meteor.currentY, Math.max(1, meteorScreenSize), 0, Math.PI * 2);
             ctx.fillStyle = 'orangered';
             ctx.fill();
             
@@ -342,7 +333,7 @@
 
             if (meteor.progress >= 1) {
                 simulationState = 'ANIMATING_IMPACT_EXPANSION';
-                calculateImpactEffectSizes();
+                calculateImpactEffectSizes(); // This uses current slider values
                 impactData.animationStartTime = Date.now();
                 if (impactData.targetFalloutRadius > 0) {
                     impactData.animationDuration = Math.max(1500, Math.min(5000, impactData.targetFalloutRadius * 0.1 * zoomLevel));
@@ -353,21 +344,27 @@
         }
         
         function calculateImpactEffectSizes() {
-            if (!imageLoaded) return; // Added safety check
+            if (!imageLoaded) return;
             const baseSizeParam = parseFloat(asteroidSizeSlider.value);
+            const currentVelocity = parseFloat(asteroidVelocitySlider.value);
             const debrisMult = parseFloat(debrisMultiplierSlider.value);
             const shockwaveMult = parseFloat(shockwaveMultiplierSlider.value);
 
-            // User's calculation: (backgroundImage.naturalWidth / 5000) * 20;
-            // Assuming 5000km is a reference width for NA content on their map image
-            const worldPixelsPerKm_base = (backgroundImage.naturalWidth / 5000); 
-            const visualMultiplier = 20; // User's multiplier
+            const referenceVelocity = 20.0; 
+            const safeCurrentVelocity = Math.max(0.1, currentVelocity); 
+            const velocityEnergyFactor = Math.sqrt(safeCurrentVelocity / referenceVelocity);
 
-            impactData.targetDirectRadius = baseSizeParam * 0.25 * worldPixelsPerKm_base * visualMultiplier;
-            impactData.targetDebrisRadius = baseSizeParam * 0.8 * debrisMult * worldPixelsPerKm_base * visualMultiplier;
-            impactData.targetSeismicRadius = baseSizeParam * 1.5 * shockwaveMult * worldPixelsPerKm_base * visualMultiplier;
-            impactData.targetFalloutRadius = baseSizeParam * 2.5 * debrisMult * worldPixelsPerKm_base * visualMultiplier;
+            const estMapWidthKm = 6000;
+            const worldPixelsPerKm = backgroundImage.naturalWidth / estMapWidthKm; 
 
+            const visualMultiplier = 30; 
+
+            impactData.targetDirectRadius = baseSizeParam * 0.25 * worldPixelsPerKm * visualMultiplier * velocityEnergyFactor;
+            impactData.targetDebrisRadius = baseSizeParam * 0.8 * debrisMult * worldPixelsPerKm * visualMultiplier * velocityEnergyFactor;
+            impactData.targetSeismicRadius = baseSizeParam * 1.5 * shockwaveMult * worldPixelsPerKm * visualMultiplier * velocityEnergyFactor;
+            impactData.targetFalloutRadius = baseSizeParam * 2.5 * debrisMult * worldPixelsPerKm * visualMultiplier * velocityEnergyFactor;
+
+            // These are reset here to prepare for the NEW impact animation
             impactData.currentDirectRadius = 0;
             impactData.currentDebrisRadius = 0;
             impactData.currentSeismicRadius = 0;
@@ -375,6 +372,7 @@
         }
 
         function drawImpactEffects() {
+            // Only draw if an impact is active and its effects should be shown
             if (simulationState !== 'ANIMATING_IMPACT_EXPANSION' || !impactData.x) return;
 
             const elapsed = Date.now() - impactData.animationStartTime;
@@ -413,8 +411,8 @@
         }
 
         let animationFrameId = null;
-        function draw() { // Combined from user's version
-            animationFrameId = requestAnimationFrame(draw); // Ensure loop continues
+        function draw() {
+            animationFrameId = requestAnimationFrame(draw);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             drawBackgroundImage();
@@ -427,37 +425,36 @@
             }
         }
 
-        // --- Event Handlers (using user's refined click/pan logic) ---
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Only pan with left mouse button
+            if (e.button !== 0) return;
             isPanning = true; 
             didPan = false; 
-            panStartX = e.clientX; // User's pan logic uses panStartX/Y
+            panStartX = e.clientX;
             panStartY = e.clientY;
         });
 
         canvas.addEventListener('mousemove', (e) => {
             if (!isPanning) return;
 
-            const dxScreen = e.clientX - panStartX; // Use panStartX/Y for delta
+            const dxScreen = e.clientX - panStartX;
             const dyScreen = e.clientY - panStartY;
 
             if (!didPan && (Math.abs(dxScreen) > 3 || Math.abs(dyScreen) > 3)) {
                 didPan = true;
             }
             
-            if (didPan) { 
+            if (didPan) {
               viewOffsetX -= dxScreen / zoomLevel;
               viewOffsetY -= dyScreen / zoomLevel;
-              panStartX = e.clientX; // Update start for next delta
+              panStartX = e.clientX; 
               panStartY = e.clientY;
               constrainViewOffset();
             }
         });
 
-        canvas.addEventListener('mouseup', (e) => { 
+        canvas.addEventListener('mouseup', (e) => {
             if (e.button !== 0) return;
-            if (isPanning && !didPan) { // If mousedown occurred but no significant pan
+            if (isPanning && !didPan) {
                 handleCanvasClick(e);
             }
             isPanning = false;
@@ -465,9 +462,9 @@
         });
 
         canvas.addEventListener('mouseleave', () => {
-            if (isPanning) { // User's logic
+            if (isPanning) {
                 isPanning = false;
-                didPan = false; // Ensure didPan is also reset
+                didPan = false;
             }
         });
 
@@ -478,10 +475,10 @@
             const mouseY = e.clientY - rect.top; 
 
             const worldMouseBeforeZoom = screenToWorld(mouseX, mouseY);
-            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9; // User's zoom factor
+            const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
             const newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zoomFactor));
             
-            if (newZoomLevel !== zoomLevel) { // Only update if zoom actually changed
+            if (newZoomLevel !== zoomLevel) {
                 zoomLevel = newZoomLevel;
                 viewOffsetX = worldMouseBeforeZoom.x - (mouseX / zoomLevel);
                 viewOffsetY = worldMouseBeforeZoom.y - (mouseY / zoomLevel);
@@ -495,6 +492,8 @@
             const clickY_screen = event.clientY - rect.top;
 
             const worldClick = screenToWorld(clickX_screen, clickY_screen);
+            const currentVelocity = parseFloat(asteroidVelocitySlider.value);
+            const safeCurrentVelocity = Math.max(0.1, currentVelocity);
 
             simulationState = 'ANIMATING_METEOR';
             meteor.targetX = worldClick.x;
@@ -507,66 +506,62 @@
             meteor.currentY = meteor.startY;
             meteor.progress = 0;
             meteor.startTime = Date.now();
-            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); // User's meteor size
+            meteor.animationDuration = BASE_METEOR_ANIMATION_DURATION * (MIN_ANIMATION_VELOCITY_REFERENCE / safeCurrentVelocity);
+            meteor.animationDuration = Math.max(500, meteor.animationDuration); 
+
+            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1);
             
             impactData.x = worldClick.x;
             impactData.y = worldClick.y;
+            // Target radii will be calculated by calculateImpactEffectSizes when meteor hits
+            // Current radii are reset here because they might have old values if a previous reset happened.
             impactData.currentDirectRadius = 0;
             impactData.currentDebrisRadius = 0;
             impactData.currentSeismicRadius = 0;
             impactData.currentFalloutRadius = 0;
         }
 
-        function updateImpactOnSliderChange() {
-            if (simulationState === 'ANIMATING_IMPACT_EXPANSION' && impactData.x && imageLoaded) { // Added imageLoaded check
-                const oldTargets = { 
-                    direct: impactData.targetDirectRadius, debris: impactData.targetDebrisRadius,
-                    seismic: impactData.targetSeismicRadius, fallout: impactData.targetFalloutRadius
-                };
-                const oldCurrents = {
-                    direct: impactData.currentDirectRadius, debris: impactData.currentDebrisRadius,
-                    seismic: impactData.currentSeismicRadius, fallout: impactData.currentFalloutRadius
-                };
-
-                calculateImpactEffectSizes();
-
-                const elapsed = Date.now() - impactData.animationStartTime;
-                if (elapsed < impactData.animationDuration) {
-                    if(oldTargets.direct > 0) impactData.currentDirectRadius = (oldCurrents.direct / oldTargets.direct) * impactData.targetDirectRadius; else impactData.currentDirectRadius=0;
-                    if(oldTargets.debris > 0) impactData.currentDebrisRadius = (oldCurrents.debris / oldTargets.debris) * impactData.targetDebrisRadius; else impactData.currentDebrisRadius=0;
-                    if(oldTargets.seismic > 0) impactData.currentSeismicRadius = (oldCurrents.seismic / oldTargets.seismic) * impactData.targetSeismicRadius; else impactData.currentSeismicRadius=0;
-                    if(oldTargets.fallout > 0) impactData.currentFalloutRadius = (oldCurrents.fallout / oldTargets.fallout) * impactData.targetFalloutRadius; else impactData.currentFalloutRadius=0;
-                } else { 
-                    impactData.currentDirectRadius = impactData.targetDirectRadius;
-                    impactData.currentDebrisRadius = impactData.targetDebrisRadius;
-                    impactData.currentSeismicRadius = impactData.targetSeismicRadius;
-                    impactData.currentFalloutRadius = impactData.targetFalloutRadius;
-                }
-                impactData.currentDirectRadius = Math.min(impactData.currentDirectRadius || 0, impactData.targetDirectRadius);
-                impactData.currentDebrisRadius = Math.min(impactData.currentDebrisRadius || 0, impactData.targetDebrisRadius);
-                impactData.currentSeismicRadius = Math.min(impactData.currentSeismicRadius || 0, impactData.targetSeismicRadius);
-                impactData.currentFalloutRadius = Math.min(impactData.currentFalloutRadius || 0, impactData.targetFalloutRadius);
-            }
-             meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); // User's meteor size
+        function resetImpactVisuals() {
+            simulationState = 'IDLE';
+            impactData.x = 0; 
+            impactData.y = 0;
+            impactData.currentDirectRadius = 0;
+            impactData.currentDebrisRadius = 0;
+            impactData.currentSeismicRadius = 0;
+            impactData.currentFalloutRadius = 0;
         }
+
+        function updateOnSliderChange() {
+            // If an impact's effects are currently visible (or animating), reset them.
+            if (simulationState === 'ANIMATING_IMPACT_EXPANSION') {
+                resetImpactVisuals();
+            }
+            // Always update the potential meteor size for the *next* impact
+            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1);
+        }
+
 
         asteroidSizeSlider.addEventListener('input', (e) => {
             asteroidSizeValueDisplay.textContent = `${e.target.value} km`;
-            updateImpactOnSliderChange();
+            updateOnSliderChange();
+        });
+        asteroidVelocitySlider.addEventListener('input', (e) => {
+            asteroidVelocityValueDisplay.textContent = `${e.target.value} km/s`;
+            updateOnSliderChange();
         });
         debrisMultiplierSlider.addEventListener('input', (e) => {
             debrisMultiplierValueDisplay.textContent = `${e.target.value}x`;
-            updateImpactOnSliderChange();
+            updateOnSliderChange();
         });
         shockwaveMultiplierSlider.addEventListener('input', (e) => {
             shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`;
-            updateImpactOnSliderChange();
+            updateOnSliderChange();
         });
 
         window.addEventListener('resize', resizeCanvas);
         
         resizeCanvas(); 
-        if (!animationFrameId) { // Start the draw loop if it hasn't been started
+        if (!animationFrameId) {
             draw();
         }
     </script>
