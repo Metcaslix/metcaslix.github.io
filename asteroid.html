@@ -28,10 +28,19 @@
             z-index: 5; 
         }
 
-        #legend-panel h2 { margin-top: 0; text-align: center; }
+        #legend-panel h2 { margin-top: 0; text-align: center; margin-bottom: 5px;} 
+
+        .copyright-notice { /* ADDED STYLE */
+            text-align: center;
+            font-size: 0.75em; 
+            color: #555;      
+            margin-top: 0;    
+            margin-bottom: 10px; 
+        }
+
         .slider-container { display: flex; flex-direction: column; }
         .slider-container label { margin-bottom: 5px; font-size: 0.9em; }
-        .slider-container input[type="range"] { width: 100%; margin-top: 2px; margin-bottom: 2px;} /* Added some margin for slider */
+        .slider-container input[type="range"] { width: 100%; margin-top: 2px; margin-bottom: 2px;} 
         .slider-container span { font-size: 0.8em; text-align: right; color: #555; }
 
         #map-container {
@@ -66,83 +75,28 @@
         #panUpBtn { grid-area: up; } #panLeftBtn { grid-area: left; } #panRightBtn { grid-area: right; } #panDownBtn { grid-area: down; }
         #zoom-controls { display: flex; flex-direction: column; gap: 8px; }
 
-        /* Mobile View Specific Styles */
         body.mobile-view-active { flex-direction: column; }
-        body.mobile-view-active #legend-panel { width: 100%; box-sizing: border-box; /* Include padding in width */ height: auto; max-height: 40vh; border-right: none; border-bottom: 2px solid #ccc; gap: 8px; z-index: 20; padding: 10px; /* Reduce padding on mobile */ }
+        body.mobile-view-active #legend-panel { width: 100%; box-sizing: border-box; height: auto; max-height: 40vh; border-right: none; border-bottom: 2px solid #ccc; gap: 8px; z-index: 20; padding: 10px; }
         body.mobile-view-active #map-container { height: auto; flex-grow: 1; }
-        
-        /* --- MODIFIED/NEW STYLES FOR MOBILE SLIDER CONTAINER --- */
-        body.mobile-view-active .slider-container {
-            /* display: block; */ /* Let flexbox column still work but allow wrapping */
-        }
-        body.mobile-view-active .slider-container label {
-            /* display: block; */ /* Removed, let flex handle it mostly */
-            margin-bottom: 3px;
-            font-size: 0.85em; /* Slightly smaller label on mobile */
-        }
-        body.mobile-view-active .slider-container span {
-            /* display: block; */ /* Removed */
-            text-align: right; /* Keep right aligned with label, but will wrap under if needed */
-            font-size: 0.75em; /* Slightly smaller value text on mobile */
-            /* margin-top: 2px; */ /* Removed */
-        }
-        /* Make label and span a flex row to try and keep them together, but wrap if needed */
-        body.mobile-view-active .slider-container .label-value-pair {
-            display: flex;
-            justify-content: space-between; /* Puts label left, value right */
-            align-items: center; /* Align items vertically */
-            flex-wrap: wrap; /* Allow wrapping if they don't fit */
-        }
-         body.mobile-view-active .slider-container .label-value-pair label {
-            margin-right: 5px; /* Space between label and value if on same line */
-         }
+        body.mobile-view-active .slider-container {} 
+        body.mobile-view-active .slider-container label { margin-bottom: 3px; font-size: 0.85em; }
+        body.mobile-view-active .slider-container span { text-align: right; font-size: 0.75em; }
+        body.mobile-view-active .slider-container .label-value-pair { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        body.mobile-view-active .slider-container .label-value-pair label { margin-right: 5px; }
 
     </style>
 </head>
 <body>
     <div id="legend-panel">
         <h2>Impact Parameters</h2>
+        <p class="copyright-notice">© metcas 2025</p>
         
-        <div class="slider-container">
-            <div class="label-value-pair"> 
-                <label for="asteroidSize">Asteroid Diameter (km):</label>
-                <span id="asteroidSizeValue">10 km</span>
-            </div>
-            <input type="range" id="asteroidSize" min="1" max="50" value="10">
-        </div>
-
-        <div class="slider-container">
-            <div class="label-value-pair">
-                <label for="asteroidVelocity">Asteroid Velocity (km/s):</label>
-                <span id="asteroidVelocityValue">20 km/s</span>
-            </div>
-            <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1">
-        </div>
-
-        <div class="slider-container">
-            <div class="label-value-pair">
-                <label for="debrisMultiplier">Debris Spread Factor:</label>
-                <span id="debrisMultiplierValue">1.0x</span>
-            </div>
-            <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1">
-        </div>
-
-        <div class="slider-container">
-            <div class="label-value-pair">
-                <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label>
-                <span id="shockwaveMultiplierValue">1.0x</span>
-            </div>
-            <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1">
-        </div>
-
+        <div class="slider-container"> <div class="label-value-pair"> <label for="asteroidSize">Asteroid Diameter (km):</label> <span id="asteroidSizeValue">10 km</span> </div> <input type="range" id="asteroidSize" min="1" max="50" value="10"> </div>
+        <div class="slider-container"> <div class="label-value-pair"> <label for="asteroidVelocity">Asteroid Velocity (km/s):</label> <span id="asteroidVelocityValue">20 km/s</span> </div> <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1"> </div>
+        <div class="slider-container"> <div class="label-value-pair"> <label for="debrisMultiplier">Debris Spread Factor:</label> <span id="debrisMultiplierValue">1.0x</span> </div> <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1"> </div>
+        <div class="slider-container"> <div class="label-value-pair"> <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label> <span id="shockwaveMultiplierValue">1.0x</span> </div> <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1"> </div>
         <hr>
-        <div class="slider-container">
-            <div class="label-value-pair">
-                <label for="timeScale">Time Scale:</label>
-                <span id="timeScaleValue">1x</span>
-            </div>
-            <input type="range" id="timeScale" min="1" max="50" value="1" step="1">
-        </div>
+        <div class="slider-container"> <div class="label-value-pair"> <label for="timeScale">Time Scale:</label> <span id="timeScaleValue">1x</span> </div> <input type="range" id="timeScale" min="1" max="50" value="1" step="1"> </div>
         <div id="view-toggle-container"> <span id="toggleDesktop" class="view-toggle">Desktop</span> | <span id="toggleMobile" class="view-toggle">Mobile</span> </div>
     </div>
     <div id="map-container">
@@ -151,6 +105,8 @@
     </div>
 
     <script>
+        // --- JAVASCRIPT IS UNCHANGED FROM THE PREVIOUS VERSION ---
+        // (All variables, functions, and event listeners remain the same)
         const canvas = document.getElementById('mapCanvas'); const ctx = canvas.getContext('2d'); const mapContainer = document.getElementById('map-container');
         const asteroidSizeSlider = document.getElementById('asteroidSize'); const asteroidVelocitySlider = document.getElementById('asteroidVelocity'); const debrisMultiplierSlider = document.getElementById('debrisMultiplier'); const shockwaveMultiplierSlider = document.getElementById('shockwaveMultiplier'); const timeScaleSlider = document.getElementById('timeScale'); const toggleDesktopButton = document.getElementById('toggleDesktop'); const toggleMobileButton = document.getElementById('toggleMobile'); const zoomInBtn = document.getElementById('zoomInBtn'); const zoomOutBtn = document.getElementById('zoomOutBtn'); const panUpBtn = document.getElementById('panUpBtn'); const panDownBtn = document.getElementById('panDownBtn'); const panLeftBtn = document.getElementById('panLeftBtn'); const panRightBtn = document.getElementById('panRightBtn');
         const asteroidSizeValueDisplay = document.getElementById('asteroidSizeValue'); const asteroidVelocityValueDisplay = document.getElementById('asteroidVelocityValue'); const debrisMultiplierValueDisplay = document.getElementById('debrisMultiplierValue'); const shockwaveMultiplierValueDisplay = document.getElementById('shockwaveMultiplierValue'); const timeScaleValueDisplay = document.getElementById('timeScaleValue');
