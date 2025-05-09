@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> {/* Added user-scalable=no */}
     <title>Asteroid Impact Simulator</title>
     <style>
         body {
             font-family: sans-serif;
             margin: 0;
-            display: flex; /* Default to desktop flex-direction: row */
-            height: 100vh;
+            display: flex; 
+            height: 100vh; /* Use 100vh */
             background-color: #f0f0f0;
-            overflow: hidden;
+            overflow: hidden; /* Prevent body scrolling */
         }
 
         #legend-panel {
@@ -21,145 +21,119 @@
             border-right: 1px solid #ccc;
             display: flex;
             flex-direction: column;
-            gap: 15px; /* Slightly reduced gap */
+            gap: 15px; 
             overflow-y: auto;
             flex-shrink: 0;
+            position: relative; /* Needed if z-index is used */
+            z-index: 5; /* Ensure legend is above map container */
         }
 
-        #legend-panel h2 {
-            margin-top: 0;
-            text-align: center;
-        }
-
-        .slider-container {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .slider-container label {
-            margin-bottom: 5px;
-            font-size: 0.9em;
-        }
-
-        .slider-container input[type="range"] {
-            width: 100%;
-        }
-
-        .slider-container span {
-            font-size: 0.8em;
-            text-align: right;
-            color: #555;
-        }
+        #legend-panel h2 { margin-top: 0; text-align: center; }
+        .slider-container { display: flex; flex-direction: column; }
+        .slider-container label { margin-bottom: 5px; font-size: 0.9em; }
+        .slider-container input[type="range"] { width: 100%; }
+        .slider-container span { font-size: 0.8em; text-align: right; color: #555; }
 
         #map-container {
-            flex-grow: 1; /* Takes remaining space in desktop row, or in mobile column */
+            flex-grow: 1; 
             display: flex;
             justify-content: center;
             align-items: center;
             background-color: #333;
-            overflow: hidden;
-            position: relative;
+            overflow: hidden; 
+            position: relative; /* Crucial for positioning zoom buttons */
+             /* Ensure map container takes available height */
+            min-height: 0; /* Prevent flex item from exceeding bounds */
         }
 
         #mapCanvas {
             border: 1px solid #000;
             background-color: transparent;
             cursor: crosshair;
-            /* For sharper images on high-DPI displays, but might affect performance if not needed */
-            /* image-rendering: -webkit-optimize-contrast; 
-            image-rendering: crisp-edges;
-            image-rendering: pixelated; */
+            display: block; /* Prevent potential extra space below canvas */
+            max-width: 100%; /* Ensure canvas fits container */
+            max-height: 100%;
         }
 
         /* View Toggle Styles */
-        #view-toggle-container {
-            margin-top: auto; /* Pushes to bottom of flex column */
-            padding-top: 15px;
-            border-top: 1px solid #aaa;
-            text-align: center;
-            font-size: 0.9em;
+        #view-toggle-container { margin-top: auto; padding-top: 15px; border-top: 1px solid #aaa; text-align: center; font-size: 0.9em; }
+        .view-toggle { cursor: pointer; padding: 5px 8px; color: #007bff; border-radius: 4px; }
+        .view-toggle.active-view { color: #495057; font-weight: bold; background-color: #ced4da; pointer-events: none; }
+        .view-toggle:not(.active-view):hover { background-color: #e9ecef; text-decoration: none; }
+
+        /* Zoom Button Styles */
+        #zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 10; /* Above canvas */
+            display: none; /* Hidden by default, shown via JS/media query */
+            flex-direction: column;
+            gap: 8px;
         }
-        .view-toggle {
-            cursor: pointer;
-            padding: 5px 8px;
-            color: #007bff;
-            border-radius: 4px;
-        }
-        .view-toggle.active-view {
-            color: #495057; 
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
             font-weight: bold;
-            background-color: #ced4da;
-            pointer-events: none; 
+            line-height: 36px; /* Vertically center +/- */
+            text-align: center;
+            background-color: rgba(240, 240, 240, 0.8);
+            color: #333;
+            border: 1px solid #aaa;
+            border-radius: 50%; /* Make them round */
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            user-select: none; /* Prevent text selection */
         }
-        .view-toggle:not(.active-view):hover {
-            background-color: #e9ecef;
-            text-decoration: none;
+        .zoom-btn:active {
+             background-color: rgba(220, 220, 220, 0.9);
         }
+
 
         /* Mobile View Specific Styles */
         body.mobile-view-active {
-            flex-direction: column; /* Stack legend and map vertically */
+            flex-direction: column; 
+        }
+        body.mobile-view-active #legend-panel {
+            width: 100%; 
+            height: auto; 
+            max-height: 40vh; /* Reduced max height slightly */
+            border-right: none; 
+            border-bottom: 2px solid #ccc; 
+            gap: 10px; 
+            z-index: 20; /* Keep legend panel above map */
+        }
+        body.mobile-view-active #map-container {
+             height: auto; /* Needed for flex-grow to work correctly in column */
+             flex-grow: 1; /* Takes remaining height */
+        }
+        /* Show zoom buttons only in mobile view */
+        body.mobile-view-active #zoom-controls {
+            display: flex;
         }
 
-        body.mobile-view-active #legend-panel {
-            width: 100%; /* Full width */
-            height: auto; /* Auto height based on content */
-            max-height: 45vh; /* Max 45% of viewport height, then scroll */
-            border-right: none; /* Remove right border */
-            border-bottom: 2px solid #ccc; /* Add bottom border */
-            gap: 10px; /* Reduce gap a bit more for mobile */
-        }
-        
-        body.mobile-view-active #map-container {
-            height: auto; 
-            flex-grow: 1; /* Ensure it takes up remaining space */
-        }
 
     </style>
 </head>
 <body>
     <div id="legend-panel">
         <h2>Impact Parameters</h2>
-        
-        <div class="slider-container">
-            <label for="asteroidSize">Asteroid Diameter (km):</label>
-            <input type="range" id="asteroidSize" min="1" max="50" value="10">
-            <span id="asteroidSizeValue">10 km</span>
-        </div>
-
-        <div class="slider-container">
-            <label for="asteroidVelocity">Asteroid Velocity (km/s):</label>
-            <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1">
-            <span id="asteroidVelocityValue">20 km/s</span>
-        </div>
-
-        <div class="slider-container">
-            <label for="debrisMultiplier">Debris Spread Factor:</label>
-            <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1">
-            <span id="debrisMultiplierValue">1.0x</span>
-        </div>
-
-        <div class="slider-container">
-            <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label>
-            <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1">
-            <span id="shockwaveMultiplierValue">1.0x</span>
-        </div>
-
+        <div class="slider-container"> <label for="asteroidSize">Asteroid Diameter (km):</label> <input type="range" id="asteroidSize" min="1" max="50" value="10"> <span id="asteroidSizeValue">10 km</span> </div>
+        <div class="slider-container"> <label for="asteroidVelocity">Asteroid Velocity (km/s):</label> <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1"> <span id="asteroidVelocityValue">20 km/s</span> </div>
+        <div class="slider-container"> <label for="debrisMultiplier">Debris Spread Factor:</label> <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1"> <span id="debrisMultiplierValue">1.0x</span> </div>
+        <div class="slider-container"> <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label> <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1"> <span id="shockwaveMultiplierValue">1.0x</span> </div>
         <hr>
-
-         <div class="slider-container">
-            <label for="timeScale">Time Scale:</label>
-            <input type="range" id="timeScale" min="1" max="50" value="1" step="1">
-            <span id="timeScaleValue">1x</span>
-        </div>
-
-        <div id="view-toggle-container">
-            <span id="toggleDesktop" class="view-toggle">Desktop</span> | 
-            <span id="toggleMobile" class="view-toggle">Mobile</span>
-        </div>
+        <div class="slider-container"> <label for="timeScale">Time Scale:</label> <input type="range" id="timeScale" min="1" max="50" value="1" step="1"> <span id="timeScaleValue">1x</span> </div>
+        <div id="view-toggle-container"> <span id="toggleDesktop" class="view-toggle">Desktop</span> | <span id="toggleMobile" class="view-toggle">Mobile</span> </div>
     </div>
     <div id="map-container">
         <canvas id="mapCanvas"></canvas>
+        {/* <!-- Zoom Buttons --> */}
+        <div id="zoom-controls">
+            <button id="zoomInBtn" class="zoom-btn">+</button>
+            <button id="zoomOutBtn" class="zoom-btn">-</button>
+        </div>
     </div>
 
     <script>
@@ -174,6 +148,8 @@
         const timeScaleSlider = document.getElementById('timeScale');
         const toggleDesktopButton = document.getElementById('toggleDesktop');
         const toggleMobileButton = document.getElementById('toggleMobile');
+        const zoomInBtn = document.getElementById('zoomInBtn'); // New button ref
+        const zoomOutBtn = document.getElementById('zoomOutBtn'); // New button ref
 
         const asteroidSizeValueDisplay = document.getElementById('asteroidSizeValue');
         const asteroidVelocityValueDisplay = document.getElementById('asteroidVelocityValue');
@@ -212,34 +188,7 @@
         function screenToWorld(screenX, screenY) { return { x: (screenX / zoomLevel) + viewOffsetX, y: (screenY / zoomLevel) + viewOffsetY }; }
         function worldToScreen(worldX, worldY) { return { x: (worldX - viewOffsetX) * zoomLevel, y: (worldY - viewOffsetY) * zoomLevel }; }
         function constrainViewOffset() { if (!imageLoaded) return; const maxOffsetX = backgroundImage.naturalWidth - (canvas.width / zoomLevel) * 0.1; const maxOffsetY = backgroundImage.naturalHeight - (canvas.height / zoomLevel) * 0.1; const minOffsetX = -(canvas.width / zoomLevel) * 0.9; const minOffsetY = -(canvas.height / zoomLevel) * 0.9; viewOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, viewOffsetX)); viewOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, viewOffsetY)); }
-        
-        function drawBackgroundImage() {
-            if (!imageLoaded) {
-                ctx.fillStyle = '#555'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = "16px Arial";
-                ctx.fillText("Background image ('north_america.jpg') loading or failed.", canvas.width/2, canvas.height/2);
-                ctx.fillText("Make sure it's in the same folder as the HTML file.", canvas.width/2, canvas.height/2 + 20);
-                return;
-            }
-            // --- MODIFICATION START ---
-            const originalSmoothingEnabled = ctx.imageSmoothingEnabled;
-            const originalWebkitSmoothing = ctx.webkitImageSmoothingEnabled; // For older Safari/Chrome
-            const originalMozSmoothing = ctx.mozImageSmoothingEnabled;       // For Firefox
-            
-            ctx.imageSmoothingEnabled = false;
-            if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = false;
-            if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = false;
-            // --- MODIFICATION END ---
-
-            ctx.drawImage(backgroundImage, viewOffsetX, viewOffsetY, canvas.width / zoomLevel, canvas.height / zoomLevel, 0, 0, canvas.width, canvas.height);
-            
-            // --- MODIFICATION START ---
-            ctx.imageSmoothingEnabled = originalSmoothingEnabled;
-            if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = originalWebkitSmoothing;
-            if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = originalMozSmoothing;
-            // --- MODIFICATION END ---
-        }
-        
+        function drawBackgroundImage() { if (!imageLoaded) { ctx.fillStyle = '#555'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = "16px Arial"; ctx.fillText("Background image ('north_america.jpg') loading or failed.", canvas.width/2, canvas.height/2); ctx.fillText("Make sure it's in the same folder as the HTML file.", canvas.width/2, canvas.height/2 + 20); return; } const originalSmoothingEnabled = ctx.imageSmoothingEnabled; const originalWebkitSmoothing = ctx.webkitImageSmoothingEnabled; const originalMozSmoothing = ctx.mozImageSmoothingEnabled; ctx.imageSmoothingEnabled = false; if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = false; if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = false; ctx.drawImage(backgroundImage, viewOffsetX, viewOffsetY, canvas.width / zoomLevel, canvas.height / zoomLevel, 0, 0, canvas.width, canvas.height); ctx.imageSmoothingEnabled = originalSmoothingEnabled; if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = originalWebkitSmoothing; if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = originalMozSmoothing; }
         function drawCityLabels() { if (!imageLoaded) return; const baseFontSize = 8, baseDotRadius = 1.5; const currentFontSize = Math.max(5, baseFontSize * zoomLevel); const dotRadius = Math.max(1, baseDotRadius * zoomLevel); const textPadding = 2 * zoomLevel; ctx.font = `${currentFontSize}px Arial`; ctx.textAlign = 'left'; cities.forEach(city => { const screenPos = worldToScreen(city.x, city.y); if (screenPos.x < -50 || screenPos.x > canvas.width + 50 || screenPos.y < -50 || screenPos.y > canvas.height + 50) return; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = Math.max(0.5, 1 / zoomLevel); ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, dotRadius, 0, Math.PI * 2); ctx.fill(); if (zoomLevel > 0.2) ctx.stroke(); if (zoomLevel > 0.25) { const textMetrics = ctx.measureText(city.name); const textWidth = textMetrics.width; const textHeight = currentFontSize; const textX = screenPos.x + (dotRadius * 1.5); const textY = screenPos.y - (textHeight / 2) + (dotRadius * 0.5); ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(textX - textPadding / 2, textY - textHeight * 0.15 - textPadding / 2, textWidth + textPadding, textHeight + textPadding); ctx.strokeStyle = 'black'; ctx.lineWidth = Math.max(0.25, 0.75 / zoomLevel); ctx.strokeText(city.name, textX, textY + textHeight * 0.7); ctx.fillStyle = 'white'; ctx.fillText(city.name, textX, textY + textHeight * 0.7); }}); }
         function drawMeteor(scaledDeltaTime) { if (simulationState !== 'ANIMATING_METEOR') return; meteor.totalScaledElapsed += scaledDeltaTime; meteor.progress = Math.min(1, meteor.totalScaledElapsed / meteor.baseAnimationDuration); const targetScreenPos = worldToScreen(meteor.targetX, meteor.targetY); meteor.currentX = meteor.startX + (targetScreenPos.x - meteor.startX) * meteor.progress; meteor.currentY = meteor.startY + (targetScreenPos.y - meteor.startY) * meteor.progress; const meteorScreenSize = meteor.size * zoomLevel; ctx.beginPath(); ctx.arc(meteor.currentX, meteor.currentY, Math.max(1, meteorScreenSize), 0, Math.PI * 2); ctx.fillStyle = 'orangered'; ctx.fill(); if (meteor.progress > 0.05 && meteorScreenSize > 0.5) { const tailLength = meteorScreenSize * 3; const dx = targetScreenPos.x - meteor.startX; const dy = targetScreenPos.y - meteor.startY; if (dx !== 0 || dy !== 0) { const dist = Math.sqrt(dx*dx + dy*dy); const tailX = meteor.currentX - (dx/dist) * tailLength; const tailY = meteor.currentY - (dy/dist) * tailLength; ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(meteor.currentX, meteor.currentY); ctx.strokeStyle = 'rgba(255, 165, 0, 0.5)'; ctx.lineWidth = Math.max(0.5, meteorScreenSize * 0.8); ctx.stroke(); }} if (meteor.progress >= 1) { simulationState = 'TRANSITION_EFFECT'; calculateImpactEffectSizes(); initTransitionEffect(); }}
         function initTransitionEffect() { transitionParticles = []; const baseNumParticles = 70; const intensityFactor = Math.max(0.5, impactData.overallIntensity); const numParticles = Math.floor(Math.min(500, baseNumParticles * intensityFactor * intensityFactor * 1.8)); transitionEffectBaseDuration = 1200 + 1000 * intensityFactor; transitionEffectBaseDuration = Math.min(4500, transitionEffectBaseDuration); transitionEffectTotalScaledElapsed = 0; for (let i = 0; i < numParticles; i++) { const angle = Math.random() * Math.PI * 2; const speed = (Math.random() * 1.8 + 0.7) * intensityFactor; const lifeSpan = PARTICLE_BASE_LIFE * (0.6 + Math.random() * 0.7) * Math.min(2.0, intensityFactor); transitionParticles.push({ x: impactData.x, y: impactData.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: lifeSpan, maxLife: lifeSpan, color: `rgba(${100 + Math.floor(Math.random() * 155)}, ${30 + Math.floor(Math.random() * 90)}, ${Math.floor(Math.random() * 30)}, 1)` }); }}
@@ -255,11 +204,34 @@
         canvas.addEventListener('mouseup', (e) => { if (e.button !== 0) return; if (isPanning && !didPan) handleCanvasClick(e); isPanning = false; didPan = false; });
         canvas.addEventListener('mouseleave', () => { if (isPanning) { isPanning = false; didPan = false; }});
         canvas.addEventListener('wheel', (e) => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const worldMouseBeforeZoom = screenToWorld(mouseX, mouseY); const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15; const newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zoomFactor)); if (newZoomLevel !== zoomLevel) { zoomLevel = newZoomLevel; viewOffsetX = worldMouseBeforeZoom.x - (mouseX / zoomLevel); viewOffsetY = worldMouseBeforeZoom.y - (mouseY / zoomLevel); constrainViewOffset(); }});
+        
+        // --- New Zoom Function for Buttons ---
+        function zoomMap(factor) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const worldCenterBeforeZoom = screenToWorld(centerX, centerY);
+            const newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * factor));
+            if (newZoomLevel !== zoomLevel) {
+                zoomLevel = newZoomLevel;
+                // Recenter view
+                viewOffsetX = worldCenterBeforeZoom.x - (centerX / zoomLevel);
+                viewOffsetY = worldCenterBeforeZoom.y - (centerY / zoomLevel);
+                constrainViewOffset();
+            }
+        }
+        // --- End New Zoom Function ---
+
         function handleCanvasClick(event) { const rect = canvas.getBoundingClientRect(); const clickX_screen = event.clientX - rect.left; const clickY_screen = event.clientY - rect.top; const worldClick = screenToWorld(clickX_screen, clickY_screen); const currentVelocity = parseFloat(asteroidVelocitySlider.value); const safeCurrentVelocity = Math.max(0.1, currentVelocity); resetImpactVisuals(); simulationState = 'ANIMATING_METEOR'; meteor.targetX = worldClick.x; meteor.targetY = worldClick.y; meteor.startX = Math.random() * canvas.width; meteor.startY = -30; meteor.currentX = meteor.startX; meteor.currentY = meteor.startY; meteor.progress = 0; meteor.totalScaledElapsed = 0; meteor.baseAnimationDuration = BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / safeCurrentVelocity); meteor.baseAnimationDuration = Math.max(500, meteor.baseAnimationDuration); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); impactData.x = worldClick.x; impactData.y = worldClick.y; }
         function resetImpactVisuals() { simulationState = 'IDLE'; impactData.x = 0; impactData.y = 0; impactData.currentDirectRadius = 0; impactData.currentDebrisRadius = 0; impactData.currentSeismicRadius = 0; impactData.currentFalloutRadius = 0; impactData.totalScaledElapsed = 0; transitionEffectTotalScaledElapsed = 0; transitionParticles = []; }
         function updateOnSliderChange() { if (simulationState === 'ANIMATING_IMPACT_EXPANSION' || simulationState === 'TRANSITION_EFFECT' || simulationState === 'SHOWING_STATIC_IMPACT') resetImpactVisuals(); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); }
         let currentView = 'desktop'; function applyViewMode(mode) { currentView = mode; if (mode === 'mobile') { document.body.classList.add('mobile-view-active'); toggleMobileButton.classList.add('active-view'); toggleDesktopButton.classList.remove('active-view'); } else { document.body.classList.remove('mobile-view-active'); toggleDesktopButton.classList.add('active-view'); toggleMobileButton.classList.remove('active-view'); } setTimeout(resizeCanvas, 50); } toggleDesktopButton.addEventListener('click', () => applyViewMode('desktop')); toggleMobileButton.addEventListener('click', () => applyViewMode('mobile')); function checkInitialView() { if (window.innerWidth <= 768) applyViewMode('mobile'); else applyViewMode('desktop'); }
         asteroidSizeSlider.addEventListener('input', (e) => { asteroidSizeValueDisplay.textContent = `${e.target.value} km`; updateOnSliderChange(); }); asteroidVelocitySlider.addEventListener('input', (e) => { asteroidVelocityValueDisplay.textContent = `${e.target.value} km/s`; updateOnSliderChange(); }); debrisMultiplierSlider.addEventListener('input', (e) => { debrisMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); shockwaveMultiplierSlider.addEventListener('input', (e) => { shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); timeScaleSlider.addEventListener('input', (e) => { timeScaleValueDisplay.textContent = `${e.target.value}x`; });
+        
+        // --- Zoom Button Event Listeners ---
+        zoomInBtn.addEventListener('click', () => zoomMap(1.25)); // Slightly larger zoom factor for buttons
+        zoomOutBtn.addEventListener('click', () => zoomMap(1 / 1.25));
+        // --- End Zoom Button Listeners ---
+
         window.addEventListener('resize', () => { resizeCanvas(); }); 
         checkInitialView(); if (!animationFrameId) draw(0);
     </script>
