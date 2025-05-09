@@ -65,6 +65,10 @@
             border: 1px solid #000;
             background-color: transparent;
             cursor: crosshair;
+            /* For sharper images on high-DPI displays, but might affect performance if not needed */
+            /* image-rendering: -webkit-optimize-contrast; 
+            image-rendering: crisp-edges;
+            image-rendering: pixelated; */
         }
 
         /* View Toggle Styles */
@@ -107,8 +111,8 @@
         }
         
         body.mobile-view-active #map-container {
-            /* flex-grow: 1; already set, will take remaining vertical space */
-            height: auto; /* Let flex-grow handle height */
+            height: auto; 
+            flex-grow: 1; /* Ensure it takes up remaining space */
         }
 
     </style>
@@ -192,67 +196,50 @@
         const BASE_METEOR_ANIMATION_DURATION_AT_1X = 5000; 
         const MIN_ANIMATION_VELOCITY_REFERENCE = 10; 
 
-        let meteor = {
-            startX: 0, startY: 0, targetX: 0, targetY: 0,
-            currentX: 0, currentY: 0, size: 5, progress: 0,
-            baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / 20),
-            totalScaledElapsed: 0 
-        };
-        
-        let impactData = {
-            x: 0, y: 0,
-            targetDirectRadius: 0, currentDirectRadius: 0,
-            targetDebrisRadius: 0, currentDebrisRadius: 0,
-            targetSeismicRadius: 0, currentSeismicRadius: 0,
-            targetFalloutRadius: 0, currentFalloutRadius: 0,
-            baseAnimationDuration: 4000, 
-            totalScaledElapsed: 0, 
-            directSpeedFactor: 4.0, debrisSpeedFactor: 2.5,
-            seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0,
-            overallIntensity: 1.0 
-        };
+        let meteor = { startX: 0, startY: 0, targetX: 0, targetY: 0, currentX: 0, currentY: 0, size: 5, progress: 0, baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / 20), totalScaledElapsed: 0 };
+        let impactData = { x: 0, y: 0, targetDirectRadius: 0, currentDirectRadius: 0, targetDebrisRadius: 0, currentDebrisRadius: 0, targetSeismicRadius: 0, currentSeismicRadius: 0, targetFalloutRadius: 0, currentFalloutRadius: 0, baseAnimationDuration: 4000, totalScaledElapsed: 0, directSpeedFactor: 4.0, debrisSpeedFactor: 2.5, seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0, overallIntensity: 1.0 };
+        let transitionParticles = []; let transitionEffectBaseDuration = 1500; let transitionEffectTotalScaledElapsed = 0;
+        const PARTICLE_BASE_LIFE = 60; const PARTICLE_SIZE = 2;
 
-        let transitionParticles = [];
-        let transitionEffectBaseDuration = 1500; 
-        let transitionEffectTotalScaledElapsed = 0;
-        const PARTICLE_BASE_LIFE = 60; 
-        const PARTICLE_SIZE = 2;
-
-        const cities = [ 
-            { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 }, { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 },
-            { name: "PHX", x: 560, y: 450 }, { name: "TOR", x: 825, y: 345 }, { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 },
-            { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 }, { name: "DAL", x: 625, y: 385 }, { name: "SEA", x: 495, y: 310 },
-            { name: "DEN", x: 750, y: 850 },  { name: "DC",  x: 845, y: 395 }, { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 },
-            { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }
-        ];
+        const cities = [ { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 }, { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 }, { name: "PHX", x: 560, y: 450 }, { name: "TOR", x: 825, y: 345 }, { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 }, { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 }, { name: "DAL", x: 690, y: 455 }, { name: "SEA", x: 495, y: 310 }, { name: "DEN", x: 625, y: 370 },  { name: "DC",  x: 845, y: 395 }, { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 }, { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }];
 
         backgroundImage.onload = () => { imageLoaded = true; console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}.`); setInitialView(); };
         backgroundImage.onerror = () => { console.error("Failed to load background image from:", imageUrl); imageLoaded = false; };
         backgroundImage.src = imageUrl;
 
         function setInitialView() { if (!imageLoaded) return; const imgAspect = backgroundImage.naturalWidth / backgroundImage.naturalHeight; const canvasAspect = canvas.width / canvas.height; zoomLevel = (imgAspect > canvasAspect ? canvas.width / backgroundImage.naturalWidth : canvas.height / backgroundImage.naturalHeight) * 0.95; zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel)); viewOffsetX = (backgroundImage.naturalWidth / 2) - (canvas.width / 2 / zoomLevel); viewOffsetY = (backgroundImage.naturalHeight / 2) - (canvas.height / 2 / zoomLevel); constrainViewOffset(); }
-        
-        function resizeCanvas() { 
-            // Ensure canvas container has its final dimensions before measuring
-            requestAnimationFrame(() => { // Use rAF to wait for CSS to apply if switching views
-                canvasWidth = mapContainer.clientWidth; 
-                canvasHeight = mapContainer.clientHeight; 
-                canvas.width = canvasWidth; 
-                canvas.height = canvasHeight; 
-                if(imageLoaded) {
-                    // No need to call setInitialView() here again if only canvas size changes
-                    // as viewOffset and zoomLevel are in world coords.
-                    // However, if the entire layout changes drastically, setInitialView might be desired.
-                    // For now, let's assume setInitialView is mainly for the first load.
-                    constrainViewOffset(); // Ensure view is still valid after resize
-                }
-            });
-        }
-
+        function resizeCanvas() { requestAnimationFrame(() => { canvasWidth = mapContainer.clientWidth; canvasHeight = mapContainer.clientHeight; canvas.width = canvasWidth; canvas.height = canvasHeight; if(imageLoaded) { constrainViewOffset(); }}); }
         function screenToWorld(screenX, screenY) { return { x: (screenX / zoomLevel) + viewOffsetX, y: (screenY / zoomLevel) + viewOffsetY }; }
         function worldToScreen(worldX, worldY) { return { x: (worldX - viewOffsetX) * zoomLevel, y: (worldY - viewOffsetY) * zoomLevel }; }
         function constrainViewOffset() { if (!imageLoaded) return; const maxOffsetX = backgroundImage.naturalWidth - (canvas.width / zoomLevel) * 0.1; const maxOffsetY = backgroundImage.naturalHeight - (canvas.height / zoomLevel) * 0.1; const minOffsetX = -(canvas.width / zoomLevel) * 0.9; const minOffsetY = -(canvas.height / zoomLevel) * 0.9; viewOffsetX = Math.max(minOffsetX, Math.min(maxOffsetX, viewOffsetX)); viewOffsetY = Math.max(minOffsetY, Math.min(maxOffsetY, viewOffsetY)); }
-        function drawBackgroundImage() { if (!imageLoaded) { ctx.fillStyle = '#555'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = "16px Arial"; ctx.fillText("Background image ('north_america.jpg') loading or failed.", canvas.width/2, canvas.height/2); ctx.fillText("Make sure it's in the same folder as the HTML file.", canvas.width/2, canvas.height/2 + 20); return; } ctx.drawImage(backgroundImage, viewOffsetX, viewOffsetY, canvas.width / zoomLevel, canvas.height / zoomLevel, 0, 0, canvas.width, canvas.height); }
+        
+        function drawBackgroundImage() {
+            if (!imageLoaded) {
+                ctx.fillStyle = '#555'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.font = "16px Arial";
+                ctx.fillText("Background image ('north_america.jpg') loading or failed.", canvas.width/2, canvas.height/2);
+                ctx.fillText("Make sure it's in the same folder as the HTML file.", canvas.width/2, canvas.height/2 + 20);
+                return;
+            }
+            // --- MODIFICATION START ---
+            const originalSmoothingEnabled = ctx.imageSmoothingEnabled;
+            const originalWebkitSmoothing = ctx.webkitImageSmoothingEnabled; // For older Safari/Chrome
+            const originalMozSmoothing = ctx.mozImageSmoothingEnabled;       // For Firefox
+            
+            ctx.imageSmoothingEnabled = false;
+            if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = false;
+            if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = false;
+            // --- MODIFICATION END ---
+
+            ctx.drawImage(backgroundImage, viewOffsetX, viewOffsetY, canvas.width / zoomLevel, canvas.height / zoomLevel, 0, 0, canvas.width, canvas.height);
+            
+            // --- MODIFICATION START ---
+            ctx.imageSmoothingEnabled = originalSmoothingEnabled;
+            if (typeof ctx.webkitImageSmoothingEnabled !== "undefined") ctx.webkitImageSmoothingEnabled = originalWebkitSmoothing;
+            if (typeof ctx.mozImageSmoothingEnabled !== "undefined") ctx.mozImageSmoothingEnabled = originalMozSmoothing;
+            // --- MODIFICATION END ---
+        }
+        
         function drawCityLabels() { if (!imageLoaded) return; const baseFontSize = 8, baseDotRadius = 1.5; const currentFontSize = Math.max(5, baseFontSize * zoomLevel); const dotRadius = Math.max(1, baseDotRadius * zoomLevel); const textPadding = 2 * zoomLevel; ctx.font = `${currentFontSize}px Arial`; ctx.textAlign = 'left'; cities.forEach(city => { const screenPos = worldToScreen(city.x, city.y); if (screenPos.x < -50 || screenPos.x > canvas.width + 50 || screenPos.y < -50 || screenPos.y > canvas.height + 50) return; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = Math.max(0.5, 1 / zoomLevel); ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, dotRadius, 0, Math.PI * 2); ctx.fill(); if (zoomLevel > 0.2) ctx.stroke(); if (zoomLevel > 0.25) { const textMetrics = ctx.measureText(city.name); const textWidth = textMetrics.width; const textHeight = currentFontSize; const textX = screenPos.x + (dotRadius * 1.5); const textY = screenPos.y - (textHeight / 2) + (dotRadius * 0.5); ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(textX - textPadding / 2, textY - textHeight * 0.15 - textPadding / 2, textWidth + textPadding, textHeight + textPadding); ctx.strokeStyle = 'black'; ctx.lineWidth = Math.max(0.25, 0.75 / zoomLevel); ctx.strokeText(city.name, textX, textY + textHeight * 0.7); ctx.fillStyle = 'white'; ctx.fillText(city.name, textX, textY + textHeight * 0.7); }}); }
         function drawMeteor(scaledDeltaTime) { if (simulationState !== 'ANIMATING_METEOR') return; meteor.totalScaledElapsed += scaledDeltaTime; meteor.progress = Math.min(1, meteor.totalScaledElapsed / meteor.baseAnimationDuration); const targetScreenPos = worldToScreen(meteor.targetX, meteor.targetY); meteor.currentX = meteor.startX + (targetScreenPos.x - meteor.startX) * meteor.progress; meteor.currentY = meteor.startY + (targetScreenPos.y - meteor.startY) * meteor.progress; const meteorScreenSize = meteor.size * zoomLevel; ctx.beginPath(); ctx.arc(meteor.currentX, meteor.currentY, Math.max(1, meteorScreenSize), 0, Math.PI * 2); ctx.fillStyle = 'orangered'; ctx.fill(); if (meteor.progress > 0.05 && meteorScreenSize > 0.5) { const tailLength = meteorScreenSize * 3; const dx = targetScreenPos.x - meteor.startX; const dy = targetScreenPos.y - meteor.startY; if (dx !== 0 || dy !== 0) { const dist = Math.sqrt(dx*dx + dy*dy); const tailX = meteor.currentX - (dx/dist) * tailLength; const tailY = meteor.currentY - (dy/dist) * tailLength; ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(meteor.currentX, meteor.currentY); ctx.strokeStyle = 'rgba(255, 165, 0, 0.5)'; ctx.lineWidth = Math.max(0.5, meteorScreenSize * 0.8); ctx.stroke(); }} if (meteor.progress >= 1) { simulationState = 'TRANSITION_EFFECT'; calculateImpactEffectSizes(); initTransitionEffect(); }}
         function initTransitionEffect() { transitionParticles = []; const baseNumParticles = 70; const intensityFactor = Math.max(0.5, impactData.overallIntensity); const numParticles = Math.floor(Math.min(500, baseNumParticles * intensityFactor * intensityFactor * 1.8)); transitionEffectBaseDuration = 1200 + 1000 * intensityFactor; transitionEffectBaseDuration = Math.min(4500, transitionEffectBaseDuration); transitionEffectTotalScaledElapsed = 0; for (let i = 0; i < numParticles; i++) { const angle = Math.random() * Math.PI * 2; const speed = (Math.random() * 1.8 + 0.7) * intensityFactor; const lifeSpan = PARTICLE_BASE_LIFE * (0.6 + Math.random() * 0.7) * Math.min(2.0, intensityFactor); transitionParticles.push({ x: impactData.x, y: impactData.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: lifeSpan, maxLife: lifeSpan, color: `rgba(${100 + Math.floor(Math.random() * 155)}, ${30 + Math.floor(Math.random() * 90)}, ${Math.floor(Math.random() * 30)}, 1)` }); }}
@@ -268,66 +255,13 @@
         canvas.addEventListener('mouseup', (e) => { if (e.button !== 0) return; if (isPanning && !didPan) handleCanvasClick(e); isPanning = false; didPan = false; });
         canvas.addEventListener('mouseleave', () => { if (isPanning) { isPanning = false; didPan = false; }});
         canvas.addEventListener('wheel', (e) => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const worldMouseBeforeZoom = screenToWorld(mouseX, mouseY); const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15; const newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zoomFactor)); if (newZoomLevel !== zoomLevel) { zoomLevel = newZoomLevel; viewOffsetX = worldMouseBeforeZoom.x - (mouseX / zoomLevel); viewOffsetY = worldMouseBeforeZoom.y - (mouseY / zoomLevel); constrainViewOffset(); }});
-        
-        function handleCanvasClick(event) {
-            const rect = canvas.getBoundingClientRect(); const clickX_screen = event.clientX - rect.left; const clickY_screen = event.clientY - rect.top;
-            const worldClick = screenToWorld(clickX_screen, clickY_screen); const currentVelocity = parseFloat(asteroidVelocitySlider.value);
-            const safeCurrentVelocity = Math.max(0.1, currentVelocity); 
-            resetImpactVisuals(); simulationState = 'ANIMATING_METEOR';
-            meteor.targetX = worldClick.x; meteor.targetY = worldClick.y; meteor.startX = Math.random() * canvas.width; meteor.startY = -30; 
-            meteor.currentX = meteor.startX; meteor.currentY = meteor.startY; meteor.progress = 0; meteor.totalScaledElapsed = 0;
-            meteor.baseAnimationDuration = BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / safeCurrentVelocity);
-            meteor.baseAnimationDuration = Math.max(500, meteor.baseAnimationDuration); // Min 500ms base duration for meteor at 1x speed
-            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1);
-            impactData.x = worldClick.x; impactData.y = worldClick.y;
-        }
-
+        function handleCanvasClick(event) { const rect = canvas.getBoundingClientRect(); const clickX_screen = event.clientX - rect.left; const clickY_screen = event.clientY - rect.top; const worldClick = screenToWorld(clickX_screen, clickY_screen); const currentVelocity = parseFloat(asteroidVelocitySlider.value); const safeCurrentVelocity = Math.max(0.1, currentVelocity); resetImpactVisuals(); simulationState = 'ANIMATING_METEOR'; meteor.targetX = worldClick.x; meteor.targetY = worldClick.y; meteor.startX = Math.random() * canvas.width; meteor.startY = -30; meteor.currentX = meteor.startX; meteor.currentY = meteor.startY; meteor.progress = 0; meteor.totalScaledElapsed = 0; meteor.baseAnimationDuration = BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / safeCurrentVelocity); meteor.baseAnimationDuration = Math.max(500, meteor.baseAnimationDuration); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); impactData.x = worldClick.x; impactData.y = worldClick.y; }
         function resetImpactVisuals() { simulationState = 'IDLE'; impactData.x = 0; impactData.y = 0; impactData.currentDirectRadius = 0; impactData.currentDebrisRadius = 0; impactData.currentSeismicRadius = 0; impactData.currentFalloutRadius = 0; impactData.totalScaledElapsed = 0; transitionEffectTotalScaledElapsed = 0; transitionParticles = []; }
         function updateOnSliderChange() { if (simulationState === 'ANIMATING_IMPACT_EXPANSION' || simulationState === 'TRANSITION_EFFECT' || simulationState === 'SHOWING_STATIC_IMPACT') resetImpactVisuals(); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); }
-        
-        // --- View Mode Toggle Logic ---
-        let currentView = 'desktop';
-        function applyViewMode(mode) {
-            currentView = mode;
-            if (mode === 'mobile') {
-                document.body.classList.add('mobile-view-active');
-                toggleMobileButton.classList.add('active-view');
-                toggleDesktopButton.classList.remove('active-view');
-            } else { // desktop
-                document.body.classList.remove('mobile-view-active');
-                toggleDesktopButton.classList.add('active-view');
-                toggleMobileButton.classList.remove('active-view');
-            }
-            // Allow CSS to apply before resizing canvas
-            setTimeout(resizeCanvas, 50); 
-        }
-        toggleDesktopButton.addEventListener('click', () => applyViewMode('desktop'));
-        toggleMobileButton.addEventListener('click', () => applyViewMode('mobile'));
-        function checkInitialView() {
-            if (window.innerWidth <= 768) applyViewMode('mobile');
-            else applyViewMode('desktop');
-        }
-        // --- End View Mode Toggle Logic ---
-
-        asteroidSizeSlider.addEventListener('input', (e) => { asteroidSizeValueDisplay.textContent = `${e.target.value} km`; updateOnSliderChange(); });
-        asteroidVelocitySlider.addEventListener('input', (e) => { asteroidVelocityValueDisplay.textContent = `${e.target.value} km/s`; updateOnSliderChange(); });
-        debrisMultiplierSlider.addEventListener('input', (e) => { debrisMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); });
-        shockwaveMultiplierSlider.addEventListener('input', (e) => { shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); });
-        timeScaleSlider.addEventListener('input', (e) => { timeScaleValueDisplay.textContent = `${e.target.value}x`; });
-
-        window.addEventListener('resize', () => {
-            // Only re-apply view mode logic if it's not a programmatic resize from applyViewMode
-            // This prevents potential loops if checkInitialView was also on resize.
-            // For now, resizeCanvas handles canvas adjustments fine.
-            // If you want dynamic switching on window resize (e.g. tablet rotation):
-            // checkInitialView(); 
-            // else:
-            resizeCanvas();
-        });
-        
-        checkInitialView(); // Set initial view based on screen width
-        // resizeCanvas(); // Called by checkInitialView indirectly via applyViewMode
-        if (!animationFrameId) draw(0);
+        let currentView = 'desktop'; function applyViewMode(mode) { currentView = mode; if (mode === 'mobile') { document.body.classList.add('mobile-view-active'); toggleMobileButton.classList.add('active-view'); toggleDesktopButton.classList.remove('active-view'); } else { document.body.classList.remove('mobile-view-active'); toggleDesktopButton.classList.add('active-view'); toggleMobileButton.classList.remove('active-view'); } setTimeout(resizeCanvas, 50); } toggleDesktopButton.addEventListener('click', () => applyViewMode('desktop')); toggleMobileButton.addEventListener('click', () => applyViewMode('mobile')); function checkInitialView() { if (window.innerWidth <= 768) applyViewMode('mobile'); else applyViewMode('desktop'); }
+        asteroidSizeSlider.addEventListener('input', (e) => { asteroidSizeValueDisplay.textContent = `${e.target.value} km`; updateOnSliderChange(); }); asteroidVelocitySlider.addEventListener('input', (e) => { asteroidVelocityValueDisplay.textContent = `${e.target.value} km/s`; updateOnSliderChange(); }); debrisMultiplierSlider.addEventListener('input', (e) => { debrisMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); shockwaveMultiplierSlider.addEventListener('input', (e) => { shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); timeScaleSlider.addEventListener('input', (e) => { timeScaleValueDisplay.textContent = `${e.target.value}x`; });
+        window.addEventListener('resize', () => { resizeCanvas(); }); 
+        checkInitialView(); if (!animationFrameId) draw(0);
     </script>
 </body>
 </html>
