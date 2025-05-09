@@ -37,7 +37,7 @@
     <div id="legend-panel">
         <h2>Impact Parameters</h2> <p class="copyright-notice">© metcas 2025</p>
         <div class="slider-container"> <div class="label-value-pair"> <label for="asteroidSize">Asteroid Diameter (km):</label> <span id="asteroidSizeValue">10 km</span> </div> <input type="range" id="asteroidSize" min="1" max="50" value="10"> </div>
-        <div class="slider-container"> <div class="label-value-pair"> <label for="asteroidVelocity">Asteroid Velocity (km/s):</label> <span id="asteroidVelocityValue">20 km/s</span> </div> <input type="range" id="asteroidVelocity" min="10" max="70" value="20" step="1"> </div>
+        <div class="slider-container"> <div class="label-value-pair"> <label for="asteroidVelocity">Asteroid Velocity (km/s):</label> <span id="asteroidVelocityValue">10 km/s</span> </div> <input type="range" id="asteroidVelocity" min="10" max="70" value="10" step="1"> </div> {/* Default value changed to 10 */}
         <div class="slider-container"> <div class="label-value-pair"> <label for="debrisMultiplier">Debris Spread Factor:</label> <span id="debrisMultiplierValue">1.0x</span> </div> <input type="range" id="debrisMultiplier" min="0.5" max="3" value="1.0" step="0.1"> </div>
         <div class="slider-container"> <div class="label-value-pair"> <label for="shockwaveMultiplier">Shockwave Intensity Factor:</label> <span id="shockwaveMultiplierValue">1.0x</span> </div> <input type="range" id="shockwaveMultiplier" min="0.5" max="3" value="1" step="0.1"> </div>
         <hr>
@@ -54,56 +54,58 @@
         let zoomLevel = 1.0; let viewOffsetX = 0; let viewOffsetY = 0; const MIN_ZOOM = 0.1; const MAX_ZOOM = 10.0;
         let isPanning = false; let panStartX = 0; let panStartY = 0; let didPan = false;
         let simulationState = 'IDLE'; const BASE_METEOR_ANIMATION_DURATION_AT_1X = 5000; const MIN_ANIMATION_VELOCITY_REFERENCE = 10; 
-        let meteor = { startX: 0, startY: 0, targetX: 0, targetY: 0, currentX: 0, currentY: 0, size: 5, progress: 0, baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / 20), totalScaledElapsed: 0 };
+        let meteor = { startX: 0, startY: 0, targetX: 0, targetY: 0, currentX: 0, currentY: 0, size: 5, progress: 0, baseAnimationDuration: BASE_METEOR_ANIMATION_DURATION_AT_1X, totalScaledElapsed: 0 }; // Initial base duration for 10km/s default
         let impactData = { x: 0, y: 0, targetDirectRadius: 0, currentDirectRadius: 0, targetDebrisRadius: 0, currentDebrisRadius: 0, targetSeismicRadius: 0, currentSeismicRadius: 0, targetFalloutRadius: 0, currentFalloutRadius: 0, baseAnimationDuration: 4000, totalScaledElapsed: 0, directSpeedFactor: 4.0, debrisSpeedFactor: 2.5, seismicSpeedFactor: 1.5, falloutSpeedFactor: 1.0, overallIntensity: 1.0, horizontalStretchFactor: 1.0, verticalSquashFactor: 1.0 };
         let transitionParticles = []; let transitionEffectBaseDuration = 1500; let transitionEffectTotalScaledElapsed = 0; const PARTICLE_BASE_LIFE = 60; const PARTICLE_SIZE = 2;
         const cities = [ { name: "NYC", x: 870, y: 375 }, { name: "LA",  x: 510, y: 445 }, { name: "CHI", x: 760, y: 365 }, { name: "HOU", x: 700, y: 480 }, { name: "PHX", x: 560, y: 450 }, { name: "TOR", x: 825, y: 345 }, { name: "MTL", x: 870, y: 330 }, { name: "MEX", x: 660, y: 585 }, { name: "VAN", x: 490, y: 290 },  { name: "MIA", x: 825, y: 525 }, { name: "DAL", x: 690, y: 455 }, { name: "SEA", x: 495, y: 310 }, { name: "DEN", x: 625, y: 370 },  { name: "DC",  x: 845, y: 395 }, { name: "SF",  x: 480, y: 405 },  { name: "ATL", x: 790, y: 445 }, { name: "EDM", x: 565, y: 245 },  { name: "WPG", x: 690, y: 285 }];
         const MAX_X_STRETCH_AT_POLE = 0.8; const MAX_Y_SQUASH_AT_POLE = 0.7;   
 
-        // --- Web Audio API Setup ---
         let audioCtx = null; 
-        const audioBuffers = {};
+        const audioBuffers = {}; // Will store decoded AudioBuffers: { meteorApproach: AudioBuffer, ... }
         let meteorApproachSoundNodes = { source: null, gainNode: null }; 
         let rumbleSoundNodes = { source: null, gainNode: null };
-        let audioSystemInitialized = false; 
+        let audioSystemAttemptedInit = false; // To prevent multiple init attempts if first one fails
 
         async function loadAudioFile(name, url) {
-            if (!audioCtx) { console.warn("AudioContext not ready, cannot load: ", name); return; }
-            if (audioBuffers[name] === null || audioBuffers[name]) return; 
+            if (!audioCtx) { console.warn("AudioContext not available for loading:", name); return; }
+            // If already loaded (is an AudioBuffer) or definitively failed (is null), don't try again.
+            if (audioBuffers[name] || audioBuffers[name] === null) return; 
             
             console.log(`Attempting to load audio: ${name} from ${url}`);
-            audioBuffers[name] = null; // Mark as attempting to load, or as failed initially
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
+                    audioBuffers[name] = null; 
                     throw new Error(`HTTP error! status: ${response.status} for ${url}`);
                 }
                 const arrayBuffer = await response.arrayBuffer();
+                // decodeAudioData can also throw if format is unsupported
                 const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
                 audioBuffers[name] = decodedBuffer; 
                 console.log(`Audio loaded and decoded: ${name}`);
             } catch (e) {
-                console.error(`Error loading audio ${name} from ${url}:`, e);
-                // audioBuffers[name] remains null, indicating failure
+                console.error(`Error loading or decoding audio ${name} from ${url}:`, e);
+                audioBuffers[name] = null; // Mark as failed
             }
         }
 
         function initializeAudioSystem() {
-            if (audioSystemInitialized || !audioCtx) return; 
+            if (audioSystemAttemptedInit || !audioCtx) return; 
+            audioSystemAttemptedInit = true; // Mark that we've tried
 
-            // IMPORTANT: Replace 'YOUR_SOUND_PATH/' with the actual relative or absolute paths to your audio files.
+            // IMPORTANT: Replace 'YOUR_SOUND_PATH/' with the actual relative or absolute paths.
+            // e.g., 'sounds/meteor_approaching.mp3' if in a 'sounds' subfolder.
             loadAudioFile('meteorApproach', 'sounds/meteor_approaching.mp3'); 
             loadAudioFile('explosion',    'sounds/explosion.mp3');          
             loadAudioFile('rumble',       'sounds/rumble.mp3');                 
             
-            audioSystemInitialized = true;
-            console.log("Audio system sound loading initiated.");
+            console.log("Audio file loading initiated.");
         }
-        // --- End Web Audio API Setup ---
 
         backgroundImage.onload = () => { 
             imageLoaded = true; 
             console.log(`Image loaded: ${backgroundImage.naturalWidth}x${backgroundImage.naturalHeight}.`);
+            // Audio will be initialized on first user interaction (click)
         };
         backgroundImage.onerror = () => { console.error("Failed to load background image from:", imageUrl); imageLoaded = false; };
         backgroundImage.src = imageUrl;
@@ -165,16 +167,55 @@
         canvas.addEventListener('wheel', (e) => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); const mX = e.clientX - rect.left; const mY = e.clientY - rect.top; const wMBZ = screenToWorld(mX, mY); const zF = e.deltaY < 0 ? 1.15 : 1 / 1.15; const nZL = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * zF)); if (nZL !== zoomLevel) { zoomLevel = nZL; viewOffsetX = wMBZ.x - (mX / zoomLevel); viewOffsetY = wMBZ.y - (mY / zoomLevel); constrainViewOffset(); }});
         function zoomMap(factor) { const cX = canvas.width / 2; const cY = canvas.height / 2; const wCBZ = screenToWorld(cX, cY); const nZL = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel * factor)); if (nZL !== zoomLevel) { zoomLevel = nZL; viewOffsetX = wCBZ.x - (cX / zoomLevel); viewOffsetY = wCBZ.y - (cY / zoomLevel); constrainViewOffset(); }}
         const PAN_STEP_SCREEN = 50; function panMapByButton(dir) { let dX = 0, dY = 0; const pAW = PAN_STEP_SCREEN / zoomLevel; if (dir === 'up') dY = -pAW; else if (dir === 'down') dY = pAW; else if (dir === 'left') dX = -pAW; else if (dir === 'right') dX = pAW; viewOffsetX += dX; viewOffsetY += dY; constrainViewOffset(); }
-        function handleCanvasClick(event) { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); console.log("AudioContext created."); if (audioCtx.state === 'suspended') { audioCtx.resume().then(() => console.log("AudioContext resumed on click.")); }} catch (e) { console.error("Web Audio API is not supported or AudioContext failed to create.", e); }} else if (audioCtx.state === 'suspended') { audioCtx.resume().then(() => console.log("AudioContext resumed."));} if (audioCtx && !audioSystemInitialized) initializeAudioSystem(); const rect = canvas.getBoundingClientRect(); const cXS = event.clientX - rect.left; const cYS = event.clientY - rect.top; const wC = screenToWorld(cXS, cYS); const cVel = parseFloat(asteroidVelocitySlider.value); const sCVel = Math.max(0.1, cVel); resetImpactVisuals(); simulationState = 'ANIMATING_METEOR'; meteor.targetX = wC.x; meteor.targetY = wC.y; meteor.startX = Math.random() * canvas.width; meteor.startY = -30; meteor.currentX = meteor.startX; meteor.currentY = meteor.startY; meteor.progress = 0; meteor.totalScaledElapsed = 0; meteor.baseAnimationDuration = BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / sCVel); meteor.baseAnimationDuration = Math.max(500, meteor.baseAnimationDuration); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); impactData.x = wC.x; impactData.y = wC.y; playMeteorApproachSound();}
+        
+        function handleCanvasClick(event) { 
+            if (!audioCtx) { 
+                try { 
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+                    console.log("AudioContext created on user interaction.");
+                    if (audioCtx.state === 'suspended') { 
+                        audioCtx.resume().then(() => {
+                            console.log("AudioContext resumed on click.");
+                            if (!audioSystemAttemptedInit) initializeAudioSystem(); 
+                        });
+                    } else if (!audioSystemAttemptedInit) {
+                         initializeAudioSystem();
+                    }
+                } catch (e) { 
+                    console.error("Web Audio API is not supported or AudioContext failed to create.", e);
+                }
+            } else if (audioCtx.state === 'suspended') { 
+                audioCtx.resume().then(() => {
+                    console.log("AudioContext resumed.");
+                    if (!audioSystemAttemptedInit) initializeAudioSystem();
+                });
+            } else if (!audioSystemAttemptedInit) { // If context running but system not init
+                 initializeAudioSystem();
+            }
+
+            const rect = canvas.getBoundingClientRect(); const cXS = event.clientX - rect.left; const cYS = event.clientY - rect.top; 
+            const wC = screenToWorld(cXS, cYS); const cVel = parseFloat(asteroidVelocitySlider.value); 
+            const sCVel = Math.max(0.1, cVel); 
+            resetImpactVisuals(); simulationState = 'ANIMATING_METEOR'; 
+            meteor.targetX = wC.x; meteor.targetY = wC.y; meteor.startX = Math.random() * canvas.width; meteor.startY = -30; 
+            meteor.currentX = meteor.startX; meteor.currentY = meteor.startY; meteor.progress = 0; meteor.totalScaledElapsed = 0;
+            meteor.baseAnimationDuration = BASE_METEOR_ANIMATION_DURATION_AT_1X * (MIN_ANIMATION_VELOCITY_REFERENCE / sCVel);
+            meteor.baseAnimationDuration = Math.max(500, meteor.baseAnimationDuration); 
+            meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); 
+            impactData.x = wC.x; impactData.y = wC.y; 
+            playMeteorApproachSound();
+        }
         function resetImpactVisuals() { simulationState = 'IDLE'; impactData.x = 0; impactData.y = 0; impactData.currentDirectRadius = 0; impactData.currentDebrisRadius = 0; impactData.currentSeismicRadius = 0; impactData.currentFalloutRadius = 0; impactData.totalScaledElapsed = 0; transitionEffectTotalScaledElapsed = 0; transitionParticles = []; impactData.horizontalStretchFactor = 1.0; impactData.verticalSquashFactor = 1.0; stopMeteorApproachSound(); stopRumbleSound(); }
         function updateOnSliderChange() { if (simulationState === 'ANIMATING_IMPACT_EXPANSION' || simulationState === 'TRANSITION_EFFECT' || simulationState === 'SHOWING_STATIC_IMPACT') resetImpactVisuals(); meteor.size = Math.max(1, parseFloat(asteroidSizeSlider.value) / 4 + 1); }
         let currentView = 'desktop'; function applyViewMode(mode) { currentView = mode; if (mode === 'mobile') { document.body.classList.add('mobile-view-active'); toggleMobileButton.classList.add('active-view'); toggleDesktopButton.classList.remove('active-view'); } else { document.body.classList.remove('mobile-view-active'); toggleDesktopButton.classList.add('active-view'); toggleMobileButton.classList.remove('active-view'); } setTimeout(() => resizeCanvas(true), 50); } toggleDesktopButton.addEventListener('click', () => applyViewMode('desktop')); toggleMobileButton.addEventListener('click', () => applyViewMode('mobile')); function checkInitialView() { if (window.innerWidth <= 768) applyViewMode('mobile'); else applyViewMode('desktop'); }
+        
         function playSound(bufferName, loop = false, initialGain = 1.0) { if (!audioCtx || !audioBuffers[bufferName] || audioBuffers[bufferName] === null) { console.warn(`Cannot play sound: ${bufferName}. AudioContext not ready or buffer not loaded/failed.`); return null; } const source = audioCtx.createBufferSource(); source.buffer = audioBuffers[bufferName]; source.loop = loop; const gainNode = audioCtx.createGain(); gainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime); source.connect(gainNode).connect(audioCtx.destination); source.start(); return { source, gainNode }; }
         function playMeteorApproachSound() { stopMeteorApproachSound(); const sound = playSound('meteorApproach', true, 0); if (sound) meteorApproachSoundNodes = sound; }
         function stopMeteorApproachSound() { if (meteorApproachSoundNodes.source) { try { meteorApproachSoundNodes.source.stop(); } catch(e) {} meteorApproachSoundNodes.source.disconnect(); meteorApproachSoundNodes.gainNode.disconnect(); meteorApproachSoundNodes = { source: null, gainNode: null }; }}
         function playExplosionSound() { const volume = 0.4 + impactData.overallIntensity * 0.6; playSound('explosion', false, Math.min(1.0, volume)); }
         function playRumbleSound() { stopRumbleSound(); const sound = playSound('rumble', true, 0); if (sound) rumbleSoundNodes = sound; }
         function stopRumbleSound() { if (rumbleSoundNodes.source) { if (rumbleSoundNodes.gainNode) { rumbleSoundNodes.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.15); setTimeout(() => { try { if(rumbleSoundNodes.source) rumbleSoundNodes.source.stop(); } catch(e) {} if(rumbleSoundNodes.source) rumbleSoundNodes.source.disconnect(); if(rumbleSoundNodes.gainNode) rumbleSoundNodes.gainNode.disconnect(); rumbleSoundNodes = { source: null, gainNode: null }; }, 200); } else { try { if(rumbleSoundNodes.source) rumbleSoundNodes.source.stop(); } catch(e) {} if(rumbleSoundNodes.source) rumbleSoundNodes.source.disconnect(); rumbleSoundNodes = { source: null, gainNode: null }; }}}
+        
         asteroidSizeSlider.addEventListener('input', (e) => { asteroidSizeValueDisplay.textContent = `${e.target.value} km`; updateOnSliderChange(); }); asteroidVelocitySlider.addEventListener('input', (e) => { asteroidVelocityValueDisplay.textContent = `${e.target.value} km/s`; updateOnSliderChange(); }); debrisMultiplierSlider.addEventListener('input', (e) => { debrisMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); shockwaveMultiplierSlider.addEventListener('input', (e) => { shockwaveMultiplierValueDisplay.textContent = `${e.target.value}x`; updateOnSliderChange(); }); timeScaleSlider.addEventListener('input', (e) => { timeScaleValueDisplay.textContent = `${e.target.value}x`; });
         zoomInBtn.addEventListener('click', (e) => { e.stopPropagation(); zoomMap(1.25); }); zoomOutBtn.addEventListener('click', (e) => { e.stopPropagation(); zoomMap(1 / 1.25); });
         panUpBtn.addEventListener('click', (e) => { e.stopPropagation(); panMapByButton('up'); }); panDownBtn.addEventListener('click', (e) => { e.stopPropagation(); panMapByButton('down'); }); panLeftBtn.addEventListener('click', (e) => { e.stopPropagation(); panMapByButton('left'); }); panRightBtn.addEventListener('click', (e) => { e.stopPropagation(); panMapByButton('right'); });
