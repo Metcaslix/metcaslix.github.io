@@ -10,7 +10,7 @@
         .controls { position: absolute; top: 10px; left: 10px; background-color: rgba(50, 50, 50, 0.8); padding: 10px; border-radius: 5px; z-index: 10; }
         .controls label { margin-right: 10px; }
         .controls input[type="radio"], .controls input[type="checkbox"] { margin-right: 5px; }
-        .controls button { margin-top: 5px; }
+        .controls button { margin-top: 5px; margin-right: 5px;}
         .info { position: absolute; bottom: 10px; left: 10px; font-size: 0.8em; color: #aaa; background-color: rgba(0,0,0,0.5); padding: 5px; border-radius: 3px;}
     </style>
 </head>
@@ -24,16 +24,17 @@
         <input type="radio" name="mass" value="100000" id="mass100k"> <label for="mass100k">100k</label>
         <br>
         <input type="checkbox" id="toggleTracks"> <label for="toggleTracks">Show Tracks</label>
+        <button id="pauseResume">Pause</button>
         <button id="clearAll">Clear All & Reset View</button>
-        <button id="generateDisk">Generate Proto-Disk (with Center Mass)</button>
+        <button id="generateDisk">Generate Proto-Disk</button>
     </div>
 
     <canvas id="gravityCanvas"></canvas>
     <div class="info">
-        by metcas v1.1-202505272248<br>
-        Left-click & drag to spawn (power & trajectory shown). Alt + Left-click on object to stop it. <br>
-        Right-click while dragging to cancel. Middle-click+drag to Pan. Wheel to Zoom. <br>
-        Ctrl + Right-click on object to delete (track turns red).
+        by metcas v1.1-202505272306<br>
+        Left-click & drag to spawn (power & trajectory shown). Right-click while dragging to cancel. <br>
+        Alt + Left-click on object to zero object velocity. Middle-click + drag to Pan. Wheel to Zoom. <br>
+        Ctrl + Right-click on object to delete. Spacebar to Pause/Resume.
     </div>
 
     <script>
@@ -50,23 +51,21 @@
         const TRACK_ALPHA = 0.7;
         const DEFAULT_BODY_COLOR = 'hsl(270, 70%, 70%)';
 
-        const PREDICTION_STEPS = 1600; // MODIFIED HERE for even longer prediction
+        const PREDICTION_STEPS = 1600;
         const PREDICTION_DT = DT;
         const PREDICTION_LINE_BASE_COLOR = { r: 0, g: 150, b: 255 };
         const PREDICTION_MAX_ALPHA = 0.5;
 
         let showTracks = false;
         let currentSpawnMass = 100;
+        let isPaused = false;
 
         const view = { scale: 1.0, offsetX: 0, offsetY: 0, minZoom: 0.05, maxZoom: 20 };
         let isDraggingSpawn = false, dragStartWorldX, dragStartWorldY, currentMouseScreenX, currentMouseScreenY;
         let isPanning = false, panLastScreenX, panLastScreenY;
 
-        // --- Color Logic & Other Utilities (Copied from previous working version - ensure full robust versions are here) ---
-        const colorStops = [];
-        const _colorStopsData = [ { mass: 1, hslStr: 'hsl(0, 100%, 50%)' },{ mass: 100, hslStr: 'hsl(30, 100%, 50%)' },{ mass: 1000, hslStr: 'hsl(60, 100%, 50%)' },{ mass: 10000, hslStr: 'hsl(195, 100%, 70%)' },{ mass: 100000, hslStr: 'hsl(0, 0%, 100%)' }];
-        _colorStopsData.forEach(s => { const p = parseHslString(s.hslStr); if(p) {s.h=p.h; s.s=p.s; s.l=p.l; const rgb = hslToRgb(p.h,p.s,p.l); if(!isNaN(rgb.r)){s.r=rgb.r;s.g=rgb.g;s.b=rgb.b;} else {s.r=128;s.g=128;s.b=128;}} else {s.r=128;s.g=128;s.b=128;} });
-        colorStops.splice(0, colorStops.length, ..._colorStopsData);
+        // --- Color Logic & Other Utilities (Ensure full robust versions from previous steps) ---
+        const colorStops = []; const _colorStopsData = [ { mass: 1, hslStr: 'hsl(0, 100%, 50%)' },{ mass: 100, hslStr: 'hsl(30, 100%, 50%)' },{ mass: 1000, hslStr: 'hsl(60, 100%, 50%)' },{ mass: 10000, hslStr: 'hsl(195, 100%, 70%)' },{ mass: 100000, hslStr: 'hsl(0, 0%, 100%)' }]; _colorStopsData.forEach(s => { const p = parseHslString(s.hslStr); if(p) {s.h=p.h; s.s=p.s; s.l=p.l; const rgb = hslToRgb(p.h,p.s,p.l); if(!isNaN(rgb.r)){s.r=rgb.r;s.g=rgb.g;s.b=rgb.b;} else {s.r=128;s.g=128;s.b=128;}} else {s.r=128;s.g=128;s.b=128;} }); colorStops.splice(0, colorStops.length, ..._colorStopsData);
         function parseHslString(hslStr){const m=hslStr.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/); return m?{h:parseInt(m[1]),s:parseInt(m[2])/100,l:parseInt(m[3])/100}:null;}
         function formatHslString(h,s,l){return isNaN(h)||isNaN(s)||isNaN(l)?DEFAULT_BODY_COLOR:`hsl(${Math.round(h)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`;}
         function hslToRgb(h,s,l){let r,g,b;if(s===0){r=g=b=l;}else{const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;const H=h/360;const t=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};r=t(p,q,H+1/3);g=t(p,q,H);b=t(p,q,H-1/3);}return{r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)};}
@@ -82,7 +81,28 @@
         document.querySelectorAll('input[name="mass"]').forEach(radio => { radio.addEventListener('change', (event) => { currentSpawnMass = parseFloat(event.target.value); }); });
         currentSpawnMass = parseFloat(document.querySelector('input[name="mass"]:checked').value);
         const toggleTracksCheckbox = document.getElementById('toggleTracks'); toggleTracksCheckbox.addEventListener('change', (event) => { showTracks = event.target.checked; if (!showTracks) { bodies.forEach(body => body.history = []); persistentTracks = []; }});
-        document.getElementById('clearAll').addEventListener('click', () => { bodies = []; persistentTracks = []; view.scale = 1.0; view.offsetX = 0; view.offsetY = 0; });
+        
+        const pauseResumeButton = document.getElementById('pauseResume'); // Defined earlier for button click
+
+        document.getElementById('clearAll').addEventListener('click', () => {
+            bodies = []; persistentTracks = []; view.scale = 1.0; view.offsetX = 0; view.offsetY = 0;
+            if(isPaused){ isPaused=false; pauseResumeButton.textContent="Pause"; }
+        });
+
+        pauseResumeButton.addEventListener('click', togglePause);
+
+        // NEW: Spacebar listener
+        window.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault(); // Prevent page scroll if spacebar is pressed
+                togglePause();
+            }
+        });
+
+        function togglePause() {
+            isPaused = !isPaused;
+            pauseResumeButton.textContent = isPaused ? "Resume" : "Pause";
+        }
 
         class CelestialBody { /* ... (same as before, full robust version) ... */ constructor(x,y,vx,vy,mass){this.x=x;this.y=y;this.vx=vx;this.vy=vy;if(isNaN(mass)||mass<=0)this.mass=1;else this.mass=mass;this.radius=Math.max(2,Math.pow(this.mass,1/3)*.5+1);this.color=getColorForMass(this.mass);this.history=[];this.ax=0;this.ay=0;} applyForce(fx,fy){if(isNaN(fx)||isNaN(fy))return;if(this.mass===0)return;this.ax+=fx/this.mass;this.ay+=fy/this.mass;} update(dt){if(isNaN(this.ax)||isNaN(this.ay)){this.ax=0;this.ay=0;}this.vx+=this.ax*dt;this.vy+=this.ay*dt;if(isNaN(this.vx)||isNaN(this.vy)){this.vx=0;this.vy=0;}this.x+=this.vx*dt;this.y+=this.vy*dt;if(isNaN(this.x)||isNaN(this.y)){bodies=bodies.filter(b=>b!==this);return;}this.ax=0;this.ay=0;if(showTracks)this.history.push({x:this.x,y:this.y});} draw(ctx){if(showTracks&&this.history.length>1){ctx.beginPath();let firstValid=true; for(let i=0;i<this.history.length;i++){if(isNaN(this.history[i].x)||isNaN(this.history[i].y))continue; if(firstValid){ctx.moveTo(this.history[i].x,this.history[i].y);firstValid=false;}else{ctx.lineTo(this.history[i].x,this.history[i].y);}} if(!firstValid) {ctx.strokeStyle=getHslaColor(this.color,TRACK_ALPHA);ctx.lineWidth=1.5/view.scale;ctx.stroke();}}ctx.beginPath();if(isNaN(this.x)||isNaN(this.y)||isNaN(this.radius)||this.radius<=0)return;ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);ctx.fillStyle=this.color;ctx.fill();}}
         
@@ -96,73 +116,15 @@
         function generateProtoDisk() { /* ... (same as before, full robust version) ... */ const diskCenterX = view.offsetX; const diskCenterY = view.offsetY; const numObjects = 200; const centralMassValue = 5000; const minDiskRadius = 50; const maxDiskRadius = 300; const minParticleMass = 0.5; const maxParticleMass = 5; const diskRotationSpeedMultiplier = 0.8; const velocityRandomnessFactor = 0.15; bodies.push(new CelestialBody(diskCenterX, diskCenterY, 0, 0, centralMassValue)); for (let i = 0; i < numObjects; i++) { const angle = Math.random() * 2 * Math.PI; const radiusFactor = Math.sqrt(Math.random()); const r = minDiskRadius + radiusFactor * (maxDiskRadius - minDiskRadius); const particleMass = minParticleMass + Math.random() * (maxParticleMass - minParticleMass); const posX = diskCenterX + r * Math.cos(angle); const posY = diskCenterY + r * Math.sin(angle); let speed = 0; if (r > 0.01) { speed = Math.sqrt(G * centralMassValue / r); } speed *= diskRotationSpeedMultiplier; let vx_tangential = -speed * Math.sin(angle); let vy_tangential =  speed * Math.cos(angle); const scatterMagnitude = velocityRandomnessFactor * speed; const vx_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude; const vy_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude; const final_vx = vx_tangential + vx_scatter; const final_vy = vy_tangential + vy_scatter; bodies.push(new CelestialBody(posX, posY, final_vx, final_vy, particleMass)); } console.log(`Generated disk with ${numObjects} particles and a central mass of ${centralMassValue}.`); }
 
         function updatePhysics(dt) { /* ... (same as before, full robust version) ... */ for (let i = 0; i < bodies.length; i++) { for (let j = i + 1; j < bodies.length; j++) { const body1 = bodies[i]; const body2 = bodies[j]; if (!body1 || !body2 || isNaN(body1.mass) || isNaN(body2.mass) || isNaN(body1.x) || isNaN(body2.x)) { continue; } const dx = body2.x - body1.x; const dy = body2.y - body1.y; const distSq = dx * dx + dy * dy; if (isNaN(distSq)) { continue; } const dist = Math.sqrt(distSq); if (dist < body1.radius + body2.radius && dist > 0.001) { const totalMass = body1.mass + body2.mass; if (isNaN(totalMass) || totalMass <=0) { continue; } const newVx = (body1.mass * body1.vx + body2.mass * body2.vx) / totalMass; const newVy = (body1.mass * body1.vy + body2.mass * body2.vy) / totalMass; let absorber, absorbed; if (body1.mass >= body2.mass) { absorber = body1; absorbed = body2; } else { absorber = body2; absorbed = body1; } absorber.mass = totalMass; absorber.vx = newVx; absorber.vy = newVy; absorber.radius = Math.max(2, Math.pow(absorber.mass, 1/3) * 0.5 + 1); absorber.color = getColorForMass(absorber.mass); if (showTracks && absorbed.history.length > 1) { persistentTracks.push({ history: [...absorbed.history], color: PERSISTENT_TRACK_COLOR }); } if (absorber === body1) { bodies.splice(j, 1); j--; } else { bodies.splice(i, 1); i--; break; } continue; } if (dist > 0.001) { const forceMagnitude = (G * body1.mass * body2.mass) / (distSq + 0.1); if(isNaN(forceMagnitude) || !isFinite(forceMagnitude)) { continue; } const forceX = forceMagnitude * dx / dist; const forceY = forceMagnitude * dy / dist; body1.applyForce(forceX, forceY); body2.applyForce(-forceX, -forceY); } } } bodies.forEach(body => { if(body) body.update(dt); }); }
+        function draw() { /* ... (same as before, full robust version) ... */ ctx.fillStyle = 'black'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.translate(canvas.width / 2, canvas.height / 2); ctx.scale(view.scale, view.scale); ctx.translate(-view.offsetX, -view.offsetY); if (showTracks) { persistentTracks.forEach(track => { if (track.history.length > 1) { ctx.beginPath(); let firstPoint = true; for (let k = 0; k < track.history.length; k++) { if(isNaN(track.history[k].x) || isNaN(track.history[k].y)) continue; if(firstPoint) { ctx.moveTo(track.history[k].x, track.history[k].y); firstPoint = false; } else { ctx.lineTo(track.history[k].x, track.history[k].y); }} if(!firstPoint) { ctx.strokeStyle = getHslaColor(track.color, TRACK_ALPHA); ctx.lineWidth = 1.5 / view.scale; ctx.stroke(); } } }); } bodies.forEach(body => { if(body) body.draw(ctx); }); if (isDraggingSpawn) { const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY); ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(currentMouseWorld.x, currentMouseWorld.y); ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 2 / view.scale; ctx.setLineDash([5 / view.scale, 5 / view.scale]); ctx.stroke(); ctx.setLineDash([]); const dx_arrow = currentMouseWorld.x - dragStartWorldX; const dy_arrow = currentMouseWorld.y - dragStartWorldY; const angle_arrow = Math.atan2(dy_arrow, dx_arrow); const arrowSize_world = 10 / view.scale; ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI + Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI + Math.PI / 6)); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI - Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI - Math.PI / 6)); ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; ctx.lineWidth = 2 / view.scale; ctx.stroke(); const predictedPath = []; let probeX = dragStartWorldX; let probeY = dragStartWorldY; let probeVx = (currentMouseWorld.x - dragStartWorldX) * VELOCITY_SCALE; let probeVy = (currentMouseWorld.y - dragStartWorldY) * VELOCITY_SCALE; const probeMass = currentSpawnMass; for (let step = 0; step < PREDICTION_STEPS; step++) { let netForceX = 0; let netForceY = 0; for (const existing_body of bodies) { if (isNaN(existing_body.x) || isNaN(existing_body.y) || isNaN(existing_body.mass)) continue; const dx_p = existing_body.x - probeX; const dy_p = existing_body.y - probeY; const distSq_p = dx_p * dx_p + dy_p * dy_p; if (distSq_p > 0.0001) { const dist_p = Math.sqrt(distSq_p); const force_p = (G * probeMass * existing_body.mass) / (distSq_p + 0.1); netForceX += force_p * dx_p / dist_p; netForceY += force_p * dy_p / dist_p; } } const probeAx = netForceX / probeMass; const probeAy = netForceY / probeMass; probeVx += probeAx * PREDICTION_DT; probeVy += probeAy * PREDICTION_DT; probeX += probeVx * PREDICTION_DT; probeY += probeVy * PREDICTION_DT; predictedPath.push({ x: probeX, y: probeY }); } if (predictedPath.length > 0) { ctx.lineWidth = 1.0 / view.scale; let lastPredX = dragStartWorldX; let lastPredY = dragStartWorldY; for (let i = 0; i < predictedPath.length; i++) { const point = predictedPath[i]; if (isNaN(point.x) || isNaN(point.y)) continue; const alpha = PREDICTION_MAX_ALPHA * (1 - (i / PREDICTION_STEPS)); if (alpha <= 0.01) break;  ctx.beginPath(); ctx.moveTo(lastPredX, lastPredY); ctx.lineTo(point.x, point.y); ctx.strokeStyle = `rgba(${PREDICTION_LINE_BASE_COLOR.r}, ${PREDICTION_LINE_BASE_COLOR.g}, ${PREDICTION_LINE_BASE_COLOR.b}, ${alpha})`; ctx.stroke(); lastPredX = point.x; lastPredY = point.y; } } } ctx.restore(); if (isDraggingSpawn) { const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY); const dragVectorLengthWorld = Math.sqrt((currentMouseWorld.x - dragStartWorldX)**2 + (currentMouseWorld.y - dragStartWorldY)**2); const powerValue = dragVectorLengthWorld * VELOCITY_SCALE * POWER_DISPLAY_SCALE_FACTOR; ctx.font = "14px Arial"; ctx.fillStyle = "rgba(200, 200, 200, 0.8)"; ctx.textAlign = "left"; const textX = currentMouseScreenX + 15; const textY = currentMouseScreenY - 15; ctx.fillText(`Power: ${powerValue.toFixed(1)}`, textX, textY); } }
 
-        function draw() {
-            ctx.fillStyle = 'black'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2); ctx.scale(view.scale, view.scale); ctx.translate(-view.offsetX, -view.offsetY);
-
-            if (showTracks) { persistentTracks.forEach(track => { if (track.history.length > 1) { ctx.beginPath(); let firstPoint = true; for (let k = 0; k < track.history.length; k++) { if(isNaN(track.history[k].x) || isNaN(track.history[k].y)) continue; if(firstPoint) { ctx.moveTo(track.history[k].x, track.history[k].y); firstPoint = false; } else { ctx.lineTo(track.history[k].x, track.history[k].y); }} if(!firstPoint) { ctx.strokeStyle = getHslaColor(track.color, TRACK_ALPHA); ctx.lineWidth = 1.5 / view.scale; ctx.stroke(); } } }); }
-            bodies.forEach(body => { if(body) body.draw(ctx); });
-
-            if (isDraggingSpawn) {
-                const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY);
-                ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(currentMouseWorld.x, currentMouseWorld.y); ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 2 / view.scale; ctx.setLineDash([5 / view.scale, 5 / view.scale]); ctx.stroke(); ctx.setLineDash([]);
-                const dx_arrow = currentMouseWorld.x - dragStartWorldX; const dy_arrow = currentMouseWorld.y - dragStartWorldY; const angle_arrow = Math.atan2(dy_arrow, dx_arrow); const arrowSize_world = 10 / view.scale;
-                ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI + Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI + Math.PI / 6)); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI - Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI - Math.PI / 6)); ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; ctx.lineWidth = 2 / view.scale; ctx.stroke();
-
-                const predictedPath = [];
-                let probeX = dragStartWorldX; let probeY = dragStartWorldY;
-                let probeVx = (currentMouseWorld.x - dragStartWorldX) * VELOCITY_SCALE;
-                let probeVy = (currentMouseWorld.y - dragStartWorldY) * VELOCITY_SCALE;
-                const probeMass = currentSpawnMass;
-                for (let step = 0; step < PREDICTION_STEPS; step++) {
-                    let netForceX = 0; let netForceY = 0;
-                    for (const existing_body of bodies) {
-                        if (isNaN(existing_body.x) || isNaN(existing_body.y) || isNaN(existing_body.mass)) continue;
-                        const dx_p = existing_body.x - probeX; const dy_p = existing_body.y - probeY;
-                        const distSq_p = dx_p * dx_p + dy_p * dy_p;
-                        if (distSq_p > 0.0001) {
-                            const dist_p = Math.sqrt(distSq_p);
-                            const force_p = (G * probeMass * existing_body.mass) / (distSq_p + 0.1);
-                            netForceX += force_p * dx_p / dist_p; netForceY += force_p * dy_p / dist_p;
-                        }
-                    }
-                    const probeAx = netForceX / probeMass; const probeAy = netForceY / probeMass;
-                    probeVx += probeAx * PREDICTION_DT; probeVy += probeAy * PREDICTION_DT;
-                    probeX += probeVx * PREDICTION_DT; probeY += probeVy * PREDICTION_DT;
-                    predictedPath.push({ x: probeX, y: probeY });
-                }
-
-                if (predictedPath.length > 0) {
-                    ctx.lineWidth = 1.0 / view.scale;
-                    let lastPredX = dragStartWorldX;
-                    let lastPredY = dragStartWorldY;
-                    for (let i = 0; i < predictedPath.length; i++) {
-                        const point = predictedPath[i];
-                        if (isNaN(point.x) || isNaN(point.y)) continue;
-                        const alpha = PREDICTION_MAX_ALPHA * (1 - (i / PREDICTION_STEPS));
-                        if (alpha <= 0.01) break; 
-                        ctx.beginPath(); ctx.moveTo(lastPredX, lastPredY); ctx.lineTo(point.x, point.y);
-                        ctx.strokeStyle = `rgba(${PREDICTION_LINE_BASE_COLOR.r}, ${PREDICTION_LINE_BASE_COLOR.g}, ${PREDICTION_LINE_BASE_COLOR.b}, ${alpha})`;
-                        ctx.stroke();
-                        lastPredX = point.x; lastPredY = point.y;
-                    }
-                }
+        function gameLoop() {
+            if (!isPaused) {
+                updatePhysics(DT);
             }
-            ctx.restore();
-
-            if (isDraggingSpawn) {
-                const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY);
-                const dragVectorLengthWorld = Math.sqrt((currentMouseWorld.x - dragStartWorldX)**2 + (currentMouseWorld.y - dragStartWorldY)**2);
-                const powerValue = dragVectorLengthWorld * VELOCITY_SCALE * POWER_DISPLAY_SCALE_FACTOR;
-                ctx.font = "14px Arial"; ctx.fillStyle = "rgba(200, 200, 200, 0.8)"; ctx.textAlign = "left";
-                const textX = currentMouseScreenX + 15; const textY = currentMouseScreenY - 15;
-                ctx.fillText(`Power: ${powerValue.toFixed(1)}`, textX, textY);
-            }
+            draw();
+            requestAnimationFrame(gameLoop);
         }
-
-        function gameLoop() { updatePhysics(DT); draw(); requestAnimationFrame(gameLoop); }
         gameLoop();
     </script>
 </body>
