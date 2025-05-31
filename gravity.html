@@ -5,33 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gravity Simulator</title>
     <style>
+        /* ... (All previous CSS, no changes needed for this step) ... */
         body { margin: 0; overflow: hidden; background-color: black; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
         canvas { display: block; cursor: crosshair; }
-        .controls { position: absolute; top: 10px; left: 10px; background-color: rgba(50, 50, 50, 0.8); padding: 10px; border-radius: 5px; z-index: 10; }
-        .controls label { margin-right: 10px; }
-        .controls input[type="radio"], .controls input[type="checkbox"] { margin-right: 5px; }
-        .controls button { margin-top: 5px; margin-right: 5px;}
+        .main-controls { position: absolute; top: 10px; left: 10px; background-color: rgba(50, 50, 50, 0.8); padding: 10px; border-radius: 5px; z-index: 10; }
+        .main-controls label { margin-right: 10px; }
+        .main-controls input[type="radio"], .main-controls input[type="checkbox"] { margin-right: 5px; vertical-align: middle;}
+        .main-controls button { margin-top: 5px; margin-right: 5px;}
         .info { position: absolute; bottom: 10px; left: 10px; font-size: 0.8em; color: #aaa; background-color: rgba(0,0,0,0.5); padding: 5px; border-radius: 3px;}
-
-        .side-menu-toggle { position: absolute; top: 10px; right: 10px; padding: 8px 12px; background-color: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; z-index: 20; }
-        .side-menu { position: absolute; top: 50px; right: -320px; width: 300px; height: calc(100vh - 70px); background-color: rgba(40, 40, 40, 0.95); border-left: 1px solid #555; border-bottom-left-radius: 5px; padding: 10px; transition: right 0.3s ease-in-out; overflow-y: auto; z-index: 19; }
-        .side-menu.open { right: 0; }
-        .side-menu fieldset { border: 1px solid #666; border-radius: 4px; margin-bottom: 15px; padding: 0; }
-        .side-menu legend { color: #ddd; font-weight: bold; padding: 5px 10px; cursor: pointer; display: block; background-color: rgba(80,80,80,0.3); border-bottom: 1px solid #666; margin-bottom: 0; }
-        .side-menu legend::before { content: '\25B8'; margin-right: 5px; display: inline-block; transition: transform 0.2s ease-in-out; }
-        .side-menu legend.expanded::before { transform: rotate(90deg); }
-        .side-menu .fieldset-content { padding: 10px; }
-        .side-menu .fieldset-content.hidden { display: none; }
-        .side-menu label { display: block; margin-bottom: 3px; font-size: 0.9em; color: #ccc; }
-        .side-menu .param-group { margin-bottom: 12px; }
-        .side-menu input[type="number"] { width: 70px; padding: 4px; margin-right: 10px; background-color: #222; border: 1px solid #555; color: white; border-radius: 3px; box-sizing: border-box; vertical-align: middle;}
-        .side-menu input[type="range"] { width: calc(100% - 95px); vertical-align: middle; cursor: pointer;}
-        .side-menu button { background-color: #555; border: 1px solid #777; color: white; padding: 5px 10px; border-radius:3px; cursor:pointer; margin-top: 10px; }
-        .side-menu button:hover { background-color: #666; }
+        .side-menu-toggle-left { position: absolute; top: 130px; left: 10px; padding: 6px 10px; background-color: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; z-index: 15; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); transition: left 0.3s ease-in-out; }
+        .side-menu-left { position: absolute; top: 130px; left: -290px; width: 270px; max-height: calc(100vh - 150px); background-color: rgba(40, 40, 40, 0.95); border-right: 1px solid #555; border-top-right-radius: 5px; border-bottom-right-radius: 5px; padding: 10px; transition: left 0.3s ease-in-out; overflow-y: auto; z-index: 14; }
+        .side-menu-left.open { left: 10px; }
+        .side-menu-left fieldset { border: 1px solid #666; border-radius: 4px; margin-bottom: 15px; padding: 0; }
+        .side-menu-left legend { color: #ddd; font-weight: bold; padding: 5px 10px; cursor: pointer; display: block; background-color: rgba(80,80,80,0.3); border-bottom: 1px solid #666; margin-bottom: 0; }
+        .side-menu-left legend::before { content: '\25B8'; margin-right: 5px; display: inline-block; transition: transform 0.2s ease-in-out; }
+        .side-menu-left legend.expanded::before { transform: rotate(90deg); }
+        .side-menu-left .fieldset-content { padding: 10px; }
+        .side-menu-left .fieldset-content.hidden { display: none; }
+        .side-menu-left label { display: block; margin-bottom: 3px; font-size: 0.9em; color: #ccc; }
+        .side-menu-left .param-group, .side-menu-left .action-input-group  { margin-bottom: 12px; }
+        .side-menu-left input[type="number"] { width: 70px; padding: 4px; margin-right: 10px; background-color: #222; border: 1px solid #555; color: white; border-radius: 3px; box-sizing: border-box; vertical-align: middle;}
+        .side-menu-left input[type="range"] { width: calc(100% - 95px); vertical-align: middle; cursor: pointer;}
+        .side-menu-left input[type="checkbox"] { vertical-align: middle; margin-right: 5px;}
+        .side-menu-left button { background-color: #555; border: 1px solid #777; color: white; padding: 5px 10px; border-radius:3px; cursor:pointer; margin-top: 10px; }
+        .side-menu-left button:hover { background-color: #666; }
+        .side-menu-left .action-input-group label { width: 80px; display: inline-block; }
+        .side-menu-left .action-input-group input[type="number"] { width: calc(100% - 90px); margin-right:0; }
+        .side-menu-left .param-group label { display: inline-block; width: 160px; }
+        .side-menu-left .param-group input[type="number"] { width: 60px; margin-left: 5px; }
+        .side-menu-left .param-group input[type="range"] { width: calc(100% - 70px); display: block; margin-top: 3px; }
+        .side-menu-left .checkbox-group label { width: auto; margin-left: 0;}
     </style>
 </head>
 <body>
-    <div class="controls">
+    <div class="main-controls">
         <label>Spawn Mass:</label>
         <input type="radio" name="mass" value="1" id="mass1"> <label for="mass1">1</label>
         <input type="radio" name="mass" value="100" id="mass100" checked> <label for="mass100">100</label>
@@ -42,68 +49,79 @@
         <input type="checkbox" id="toggleTracks"> <label for="toggleTracks">Show Tracks</label>
         <button id="pauseResume">Pause</button>
         <button id="clearAll">Clear All & Reset View</button>
-        <button id="generateDisk">Generate Proto-Disk</button>
     </div>
 
-    <button class="side-menu-toggle" id="toggleSideMenu">Params &raquo;</button>
-    <div class="side-menu" id="sideMenu">
-        <fieldset id="protoDiskParamsFieldset">
-            <legend id="protoDiskParamsLegend">Proto-Disk Parameters</legend>
-            <div class="fieldset-content" id="protoDiskParamsContent">
-                <div class="param-group">
-                    <label for="pdNumObjectsNum">Number of Objects:</label>
-                    <input type="number" id="pdNumObjectsNum" min="10" max="1000" step="10">
-                    <input type="range" id="pdNumObjectsRange" min="10" max="1000" step="10">
-                </div>
-                <div class="param-group">
-                    <label for="pdCentralMassNum">Central Mass:</label>
-                    <input type="number" id="pdCentralMassNum" min="0" max="100000" step="100">
-                    <input type="range" id="pdCentralMassRange" min="0" max="100000" step="1000">
-                </div>
-                <div class="param-group">
-                    <label for="pdMinRadiusNum">Min Disk Radius:</label>
-                    <input type="number" id="pdMinRadiusNum" min="1" max="500" step="1">
-                    <input type="range" id="pdMinRadiusRange" min="1" max="500" step="5">
-                </div>
-                <div class="param-group">
-                    <label for="pdMaxRadiusNum">Max Disk Radius:</label>
-                    <input type="number" id="pdMaxRadiusNum" min="10" max="1000" step="10">
-                    <input type="range" id="pdMaxRadiusRange" min="10" max="1000" step="10">
-                </div>
-                <div class="param-group">
-                    <label for="pdMinParticleMassNum">Min Particle Mass:</label>
-                    <input type="number" id="pdMinParticleMassNum" min="0.1" max="100" step="0.1">
-                    <input type="range" id="pdMinParticleMassRange" min="0.1" max="100" step="0.1">
-                </div>
-                <div class="param-group">
-                    <label for="pdMaxParticleMassNum">Max Particle Mass:</label>
-                    <input type="number" id="pdMaxParticleMassNum" min="0.1" max="100" step="0.1">
-                    <input type="range" id="pdMaxParticleMassRange" min="0.1" max="100" step="0.1">
-                </div>
-                <div class="param-group">
-                    <label for="pdRotationSpeedMultNum">Rotation Speed Multiplier:</label>
-                    <input type="number" id="pdRotationSpeedMultNum" min="0.1" max="2.0" step="0.01">
-                    <input type="range" id="pdRotationSpeedMultRange" min="0.1" max="2.0" step="0.01">
-                </div>
-                <div class="param-group">
-                    <label for="pdVelocityRandomnessNum">Velocity Randomness Factor:</label>
-                    <input type="number" id="pdVelocityRandomnessNum" min="0" max="1.0" step="0.01">
-                    <input type="range" id="pdVelocityRandomnessRange" min="0" max="1.0" step="0.01">
-                </div>
-                <button id="resetProtoDiskParams">Reset Proto-Disk Defaults</button>
+    <button class="side-menu-toggle-left" id="toggleActionsMenu">Actions &raquo;</button>
+    <div class="side-menu-left" id="actionsMenu">
+        <fieldset id="gridActionFieldset">
+            <legend id="gridActionLegend">Grid</legend>
+            <div class="fieldset-content" id="gridActionContent">
+                <div class="action-input-group"> <label for="gridRows">Rows:</label> <input type="number" id="gridRows" value="5" min="1" max="50" step="1"> </div>
+                <div class="action-input-group"> <label for="gridCols">Cols:</label> <input type="number" id="gridCols" value="5" min="1" max="50" step="1"> </div>
+                <div class="action-input-group"> <label for="gridSpacing">Spacing:</label> <input type="number" id="gridSpacing" value="50" min="5" max="200" step="5"> </div>
+                <p style="font-size:0.8em; color:#999;">(Uses currently selected spawn mass)</p>
+                <button id="generateStaticGridButton">Generate Static Grid</button>
             </div>
         </fieldset>
+
+        <fieldset id="protoDiskParamsFieldset">
+            <legend id="protoDiskParamsLegend">Proto-Disk</legend>
+            <div class="fieldset-content" id="protoDiskParamsContent">
+                <div class="param-group"> <label for="pdNumObjectsNum">Number of Objects:</label> <input type="number" id="pdNumObjectsNum"> <input type="range" id="pdNumObjectsRange"> </div>
+                <div class="param-group"> <label for="pdCentralMassNum">Central Mass:</label> <input type="number" id="pdCentralMassNum"> <input type="range" id="pdCentralMassRange"> </div>
+                <div class="param-group"> <label for="pdMinRadiusNum">Min Disk Radius:</label> <input type="number" id="pdMinRadiusNum"> <input type="range" id="pdMinRadiusRange"> </div>
+                <div class="param-group"> <label for="pdMaxRadiusNum">Max Disk Radius:</label> <input type="number" id="pdMaxRadiusNum"> <input type="range" id="pdMaxRadiusRange"> </div>
+                <div class="param-group"> <label for="pdMinParticleMassNum">Min Particle Mass:</label> <input type="number" id="pdMinParticleMassNum"> <input type="range" id="pdMinParticleMassRange"> </div>
+                <div class="param-group"> <label for="pdMaxParticleMassNum">Max Particle Mass:</label> <input type="number" id="pdMaxParticleMassNum"> <input type="range" id="pdMaxParticleMassRange"> </div>
+                <div class="param-group"> <label for="pdRotationSpeedMultNum">Rotation Speed Multiplier:</label> <input type="number" id="pdRotationSpeedMultNum"> <input type="range" id="pdRotationSpeedMultRange"> </div>
+                <div class="param-group"> <label for="pdVelocityRandomnessNum">Velocity Randomness Factor:</label> <input type="number" id="pdVelocityRandomnessNum"> <input type="range" id="pdVelocityRandomnessRange"> </div>
+                <button id="resetProtoDiskParams">Reset Proto-Disk Defaults</button>
+                <button id="generateDiskButton">Generate Proto-Disk</button>
+            </div>
+        </fieldset>
+
+        <fieldset id="spiralActionFieldset">
+            <legend id="spiralActionLegend">Spiral</legend>
+            <div class="fieldset-content" id="spiralActionContent">
+                <div class="param-group"><label for="spCentralMassNum">Central Mass:</label><input type="number" id="spCentralMassNum"><input type="range" id="spCentralMassRange"></div>
+                <div class="param-group"><label for="spNumObjectsNum">Number of Objects:</label><input type="number" id="spNumObjectsNum"><input type="range" id="spNumObjectsRange"></div>
+                <div class="param-group"><label for="spNumArmsNum">Number of Arms:</label><input type="number" id="spNumArmsNum"><input type="range" id="spNumArmsRange"></div>
+                <div class="param-group"><label for="spStartRadiusNum">Start Radius:</label><input type="number" id="spStartRadiusNum"><input type="range" id="spStartRadiusRange"></div>
+                <div class="param-group"><label for="spEndRadiusNum">End Radius:</label><input type="number" id="spEndRadiusNum"><input type="range" id="spEndRadiusRange"></div>
+                <div class="param-group"><label for="spTightnessNum">Tightness (b):</label><input type="number" id="spTightnessNum"><input type="range" id="spTightnessRange"></div>
+                <div class="param-group"><label for="spArmSpreadNum">Arm Spread:</label><input type="number" id="spArmSpreadNum"><input type="range" id="spArmSpreadRange"></div>
+                <div class="param-group"><label for="spParticleMassNum">Particle Mass:</label><input type="number" id="spParticleMassNum"><input type="range" id="spParticleMassRange"></div>
+                <div class="param-group"><label for="spRotationSpeedNum">Rotation Speed Mult:</label><input type="number" id="spRotationSpeedNum"><input type="range" id="spRotationSpeedRange"></div>
+                <div class="param-group"><label for="spVelRandomnessNum">Velocity Randomness:</label><input type="number" id="spVelRandomnessNum"><input type="range" id="spVelRandomnessRange"></div>
+                <div class="checkbox-group"> <input type="checkbox" id="spMirror" name="spMirror"> <label for="spMirror">Mirror Spiral (Reverse Winding)</label> </div>
+                <button id="resetSpiralParams">Reset Spiral Defaults</button>
+                <button id="generateSpiralButton">Generate Spiral</button>
+            </div>
+        </fieldset>
+
+        <fieldset id="binaryStarActionFieldset">
+            <legend id="binaryStarActionLegend">Binary System</legend>
+            <div class="fieldset-content" id="binaryStarActionContent">
+                <div class="param-group"><label for="bsMassANum">Mass Star A:</label><input type="number" id="bsMassANum"><input type="range" id="bsMassARange"></div>
+                <div class="param-group"><label for="bsMassBNum">Mass Star B:</label><input type="number" id="bsMassBNum"><input type="range" id="bsMassBRange"></div>
+                <div class="param-group"><label for="bsSeparationNum">Periapsis Separation:</label><input type="number" id="bsSeparationNum"><input type="range" id="bsSeparationRange"></div>
+                <div class="param-group"><label for="bsEccentricityNum">Eccentricity (0-0.9):</label><input type="number" id="bsEccentricityNum"><input type="range" id="bsEccentricityRange"></div>
+                <button id="resetBinaryStarParams">Reset Binary Defaults</button>
+                <button id="generateBinaryStarButton">Generate Binary System</button>
+            </div>
+        </fieldset>
+
     </div>
 
     <canvas id="gravityCanvas"></canvas>
     <div class="info">
-        by metcas v1.2-202505302030<br>
-        Left-click & drag to spawn. Alt + Left-click on object to stop it. <br>
-        Right-click while dragging to cancel. Middle-click+drag to Pan. Wheel to Zoom. <br>
-        Ctrl + Right-click on object to delete. Spacebar to Pause/Resume.
+        by metcas v1.2-202505311355<br>
+        Left-click & drag to spawn. Alt + Left-click on object to freeze it. Right-click while dragging to cancel. <br>
+		Middle-click+drag to Pan. Wheel to Zoom. Spacebar to Pause/Resume.
     </div>
 
     <script>
+        // --- Start of script - All previous JS code should be here ---
         const canvas = document.getElementById('gravityCanvas'); const ctx = canvas.getContext('2d');
         let bodies = []; let persistentTracks = []; let G = 0.5; const DT = 0.016; const VELOCITY_SCALE = 0.05; const POWER_DISPLAY_SCALE_FACTOR = 100; const PERSISTENT_TRACK_COLOR = 'hsl(0, 90%, 60%)'; const TRACK_ALPHA = 0.7; const DEFAULT_BODY_COLOR = 'hsl(270, 70%, 70%)';
         const PREDICTION_STEPS = 1600; const PREDICTION_DT = DT; const PREDICTION_LINE_BASE_COLOR = { r: 0, g: 150, b: 255 }; const PREDICTION_MAX_ALPHA = 0.5; const PRECESSION_K_FACTOR = 50;
@@ -121,12 +139,39 @@
 
         const defaultProtoDiskParams = { numObjects: 200, centralMass: 5000, minRadius: 50, maxRadius: 300, minParticleMass: 0.5, maxParticleMass: 5, rotationSpeedMult: 0.8, velocityRandomness: 0.15 };
         let currentProtoDiskParams = { ...defaultProtoDiskParams };
-        const sideMenu = document.getElementById('sideMenu');
-        const toggleSideMenuButton = document.getElementById('toggleSideMenu');
-        toggleSideMenuButton.addEventListener('click', () => { sideMenu.classList.toggle('open'); toggleSideMenuButton.textContent = sideMenu.classList.contains('open') ? 'Params \u00AB' : 'Params \u00BB'; });
+        const actionsMenu = document.getElementById('actionsMenu');
+        const toggleActionsMenuButton = document.getElementById('toggleActionsMenu');
+        const initialActionsToggleLeft = 10; const actionsMenuWidth = 270; const actionsToggleGap = 0; 
+        toggleActionsMenuButton.addEventListener('click', () => { actionsMenu.classList.toggle('open'); if (actionsMenu.classList.contains('open')) { toggleActionsMenuButton.style.left = `${initialActionsToggleLeft + actionsMenuWidth + actionsToggleGap}px`; toggleActionsMenuButton.innerHTML = "&laquo; Actions"; } else { toggleActionsMenuButton.style.left = `${initialActionsToggleLeft}px`; toggleActionsMenuButton.innerHTML = "Actions &raquo;"; } });
         const pdInputs = { numObjects: { num: document.getElementById('pdNumObjectsNum'), range: document.getElementById('pdNumObjectsRange') }, centralMass: { num: document.getElementById('pdCentralMassNum'), range: document.getElementById('pdCentralMassRange') }, minRadius: { num: document.getElementById('pdMinRadiusNum'), range: document.getElementById('pdMinRadiusRange') }, maxRadius: { num: document.getElementById('pdMaxRadiusNum'), range: document.getElementById('pdMaxRadiusRange') }, minParticleMass: { num: document.getElementById('pdMinParticleMassNum'), range: document.getElementById('pdMinParticleMassRange') }, maxParticleMass: { num: document.getElementById('pdMaxParticleMassNum'),  range: document.getElementById('pdMaxParticleMassRange') }, rotationSpeedMult: { num: document.getElementById('pdRotationSpeedMultNum'), range: document.getElementById('pdRotationSpeedMultRange') }, velocityRandomness: { num: document.getElementById('pdVelocityRandomnessNum'),range: document.getElementById('pdVelocityRandomnessRange') } };
-        function populateProtoDiskInputs() { for (const key in currentProtoDiskParams) { if (pdInputs[key]) { pdInputs[key].num.value = currentProtoDiskParams[key]; pdInputs[key].range.value = currentProtoDiskParams[key]; } } }
-        function setupProtoDiskParamListeners() { for (const key in pdInputs) { if (pdInputs[key]) { pdInputs[key].num.addEventListener('input', (e) => { const value = parseFloat(e.target.value); currentProtoDiskParams[key] = isNaN(value) ? defaultProtoDiskParams[key] : value; pdInputs[key].range.value = currentProtoDiskParams[key]; }); pdInputs[key].range.addEventListener('input', (e) => { const value = parseFloat(e.target.value); currentProtoDiskParams[key] = value; pdInputs[key].num.value = value; }); } } document.getElementById('resetProtoDiskParams').addEventListener('click', () => { currentProtoDiskParams = { ...defaultProtoDiskParams }; populateProtoDiskInputs(); }); }
+        function populateProtoDiskInputs() { for (const key in defaultProtoDiskParams) { if (pdInputs[key]) { pdInputs[key].num.value = defaultProtoDiskParams[key]; pdInputs[key].range.value = defaultProtoDiskParams[key]; const def = defaultProtoDiskParams[key]; let min = key.includes("Mass") && key !== "centralMass" ? 0.1 : (key === "numObjects" ? 10 : (key.includes("Radius") ? 1 : 0)); let max = key.includes("Mass") && key !== "centralMass" ? 100 : (key === "numObjects" ? 1000 : (key.includes("Radius") ? 500 : (key==="rotationSpeedMult" ? 2 : 1))); let step = (key.includes("Mult") || key.includes("Randomness") || key.includes("ParticleMass")) ? 0.01 : (key === "numObjects" || key.includes("Radius") && key!=="minRadius" ? 10 : 1); pdInputs[key].num.min = min; pdInputs[key].num.max = max; pdInputs[key].num.step = step; pdInputs[key].range.min = min; pdInputs[key].range.max = max; pdInputs[key].range.step = step;}} currentProtoDiskParams = { ...defaultProtoDiskParams };}
+        function setupProtoDiskParamListeners() { for (const key in pdInputs) { if (pdInputs[key]) { pdInputs[key].num.addEventListener('input', (e) => { const value = parseFloat(e.target.value); currentProtoDiskParams[key] = isNaN(value) ? defaultProtoDiskParams[key] : value; pdInputs[key].range.value = currentProtoDiskParams[key]; }); pdInputs[key].range.addEventListener('input', (e) => { const value = parseFloat(e.target.value); currentProtoDiskParams[key] = value; pdInputs[key].num.value = value; }); } } document.getElementById('resetProtoDiskParams').addEventListener('click', populateProtoDiskInputs); }
+        
+        const defaultSpiralParams = { centralMass: 0, numObjects: 150, numArms: 2, startRadius: 30, endRadius: 250, tightness: 0.2, armSpread: 20, particleMass: 1, rotationSpeed: 0.7, velRandomness: 0.1, mirror: false };
+        let currentSpiralParams = { ...defaultSpiralParams };
+        const spInputs = {
+            centralMass: {num: document.getElementById('spCentralMassNum'), range: document.getElementById('spCentralMassRange')}, numObjects: { num: document.getElementById('spNumObjectsNum'), range: document.getElementById('spNumObjectsRange') }, numArms: { num: document.getElementById('spNumArmsNum'), range: document.getElementById('spNumArmsRange') },
+            startRadius: { num: document.getElementById('spStartRadiusNum'), range: document.getElementById('spStartRadiusRange') }, endRadius: { num: document.getElementById('spEndRadiusNum'), range: document.getElementById('spEndRadiusRange') },
+            tightness: { num: document.getElementById('spTightnessNum'), range: document.getElementById('spTightnessRange') }, armSpread: { num: document.getElementById('spArmSpreadNum'), range: document.getElementById('spArmSpreadRange') },
+            particleMass: { num: document.getElementById('spParticleMassNum'), range: document.getElementById('spParticleMassRange') }, rotationSpeed: { num: document.getElementById('spRotationSpeedNum'), range: document.getElementById('spRotationSpeedRange') },
+            velRandomness: { num: document.getElementById('spVelRandomnessNum'), range: document.getElementById('spVelRandomnessRange') }, mirror: document.getElementById('spMirror')
+        };
+        function populateSpiralInputs() { for (const key in defaultSpiralParams) { if (spInputs[key]) { if (key === 'mirror') { spInputs[key].checked = defaultSpiralParams[key]; } else { spInputs[key].num.value = defaultSpiralParams[key]; spInputs[key].range.value = defaultSpiralParams[key]; const def = defaultSpiralParams[key]; let min = 0.1, max = 100, step = 0.1; if (key === 'centralMass') {min=0; max=100000; step=100;} else if (key === 'numObjects') { min = 10; max = 500; step = 10; } else if (key === 'numArms') { min = 1; max = 8; step = 1; } else if (key.includes('Radius')) { min = 10; max = 500; step = 5; } else if (key === 'tightness') { min = 0.05; max = 1.0; step = 0.01; } else if (key === 'armSpread') { min = 1; max = 100; step = 1; } else if (key === 'particleMass') { min = 0.1; max = 100; step = 0.1; } else if (key === 'rotationSpeed') { min = 0; max = 2.0; step = 0.01; } else if (key === 'velRandomness') { min = 0; max = 0.5; step = 0.01; } spInputs[key].num.min = min; spInputs[key].num.max = max; spInputs[key].num.step = step; spInputs[key].range.min = min; spInputs[key].range.max = max; spInputs[key].range.step = step;}}} currentSpiralParams = { ...defaultSpiralParams };}
+        function setupSpiralParamListeners() { for (const key in spInputs) { if (spInputs[key]) { if (key === 'mirror') { spInputs[key].addEventListener('change', (e) => { currentSpiralParams[key] = e.target.checked; }); } else { spInputs[key].num.addEventListener('input', (e) => { const val = parseFloat(e.target.value); currentSpiralParams[key] = isNaN(val) ? defaultSpiralParams[key] : val; spInputs[key].range.value = currentSpiralParams[key]; }); spInputs[key].range.addEventListener('input', (e) => { const val = parseFloat(e.target.value); currentSpiralParams[key] = val; spInputs[key].num.value = val; }); } } } document.getElementById('resetSpiralParams').addEventListener('click', populateSpiralInputs); }
+
+        // NEW: Binary Star Parameters
+        const defaultBinaryStarParams = { massA: 1000, massB: 500, separation: 200, eccentricity: 0.0 };
+        let currentBinaryStarParams = { ...defaultBinaryStarParams };
+        const bsInputs = {
+            massA: { num: document.getElementById('bsMassANum'), range: document.getElementById('bsMassARange') },
+            massB: { num: document.getElementById('bsMassBNum'), range: document.getElementById('bsMassBRange') },
+            separation: { num: document.getElementById('bsSeparationNum'), range: document.getElementById('bsSeparationRange') },
+            eccentricity: { num: document.getElementById('bsEccentricityNum'), range: document.getElementById('bsEccentricityRange') }
+        };
+        function populateBinaryStarInputs() { for (const key in defaultBinaryStarParams) { if (bsInputs[key]) { bsInputs[key].num.value = defaultBinaryStarParams[key]; bsInputs[key].range.value = defaultBinaryStarParams[key]; const def = defaultBinaryStarParams[key]; let min=10, max=10000, step=100; if (key.includes('Mass')) {min=100; max=50000; step=100;} else if (key==='separation'){min=50; max=1000; step=10;} else if (key==='eccentricity'){min=0; max=0.9; step=0.01;} bsInputs[key].num.min=min; bsInputs[key].num.max=max; bsInputs[key].num.step=step; bsInputs[key].range.min=min; bsInputs[key].range.max=max; bsInputs[key].range.step=step;}} currentBinaryStarParams = { ...defaultBinaryStarParams };}
+        function setupBinaryStarParamListeners() { for (const key in bsInputs) { if (bsInputs[key]) { bsInputs[key].num.addEventListener('input', (e) => { const val = parseFloat(e.target.value); currentBinaryStarParams[key] = isNaN(val) ? defaultBinaryStarParams[key] : val; bsInputs[key].range.value = currentBinaryStarParams[key]; }); bsInputs[key].range.addEventListener('input', (e) => { const val = parseFloat(e.target.value); currentBinaryStarParams[key] = val; bsInputs[key].num.value = val; }); } } document.getElementById('resetBinaryStarParams').addEventListener('click', populateBinaryStarInputs); }
+
+
         function makeFieldsetCollapsible(legendId, contentId, startExpanded = true) { const legend = document.getElementById(legendId); const content = document.getElementById(contentId); if (!legend || !content) { console.error("Collapsible fieldset elements not found:", legendId, contentId); return; } if (startExpanded) { legend.classList.add('expanded'); } else { content.classList.add('hidden'); } legend.addEventListener('click', () => { content.classList.toggle('hidden'); legend.classList.toggle('expanded'); }); }
         
         function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight;} window.addEventListener('resize', resizeCanvas); resizeCanvas(); function screenToWorld(screenX, screenY) { const worldX = (screenX - canvas.width / 2) / view.scale + view.offsetX; const worldY = (screenY - canvas.height / 2) / view.scale + view.offsetY; return { x: worldX, y: worldY }; }
@@ -141,15 +186,118 @@
         window.addEventListener('mouseup', (event) => { if (event.button === 0 && isDraggingSpawn) { const endMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY); const dxWorld = endMouseWorld.x - dragStartWorldX; const dyWorld = endMouseWorld.y - dragStartWorldY; const initialVx = dxWorld * VELOCITY_SCALE; const initialVy = dyWorld * VELOCITY_SCALE; bodies.push(new CelestialBody(dragStartWorldX, dragStartWorldY, initialVx, initialVy, currentSpawnMass)); isDraggingSpawn = false; } else if (event.button === 1 && isPanning) { isPanning = false; canvas.style.cursor = 'crosshair'; }});
         canvas.addEventListener('wheel', (event) => { event.preventDefault(); const scrollDelta = Math.sign(event.deltaY); const zoomFactor = 0.1; const mouseBeforeZoomWorld = screenToWorld(event.clientX, event.clientY); let newScale = view.scale * (1 - scrollDelta * zoomFactor); newScale = Math.max(view.minZoom, Math.min(view.maxZoom, newScale)); view.scale = newScale; view.offsetX = mouseBeforeZoomWorld.x - (event.clientX - canvas.width / 2) / view.scale; view.offsetY = mouseBeforeZoomWorld.y - (event.clientY - canvas.height / 2) / view.scale;});
         canvas.addEventListener('contextmenu', (event) => { event.preventDefault(); if (event.ctrlKey) { const mouseWorld = screenToWorld(event.clientX, event.clientY); for (let i = bodies.length - 1; i >= 0; i--) { const body = bodies[i]; if (isNaN(body.x) || isNaN(body.y) || isNaN(body.radius)) continue; const distSq = (body.x - mouseWorld.x)**2 + (body.y - worldMouse.y)**2; if (distSq < body.radius**2) { if (showTracks && body.history.length > 1) { persistentTracks.push({ history: [...body.history], color: PERSISTENT_TRACK_COLOR }); } bodies.splice(i, 1); break;}}} else if (isDraggingSpawn) { isDraggingSpawn = false; }});
-        document.getElementById('generateDisk').addEventListener('click', generateProtoDisk);
+        
+        document.getElementById('generateDiskButton').addEventListener('click', generateProtoDisk);
         function generateProtoDisk() { const diskCenterX = view.offsetX; const diskCenterY = view.offsetY; const numObjects = currentProtoDiskParams.numObjects; const centralMassValue = currentProtoDiskParams.centralMass; const minDiskRadius = currentProtoDiskParams.minRadius; const maxDiskRadius = currentProtoDiskParams.maxRadius; const minParticleMass = currentProtoDiskParams.minParticleMass; const maxParticleMass = currentProtoDiskParams.maxParticleMass; const diskRotationSpeedMultiplier = currentProtoDiskParams.rotationSpeedMult; const velocityRandomnessFactor = currentProtoDiskParams.velocityRandomness; if (centralMassValue > 0) { bodies.push(new CelestialBody(diskCenterX, diskCenterY, 0, 0, centralMassValue)); } for (let i = 0; i < numObjects; i++) { const angle = Math.random() * 2 * Math.PI; const radiusFactor = Math.sqrt(Math.random()); const r = minDiskRadius + radiusFactor * (maxDiskRadius - minDiskRadius); const particleMass = minParticleMass + Math.random() * (maxParticleMass - minParticleMass); const posX = diskCenterX + r * Math.cos(angle); const posY = diskCenterY + r * Math.sin(angle); let speed = 0; if (r > 0.01 && centralMassValue > 0) { speed = Math.sqrt(G * centralMassValue / r); } else if (r > 0.01) { speed = Math.sqrt(G * (maxParticleMass * numObjects * 0.1) / r) * 0.5; } speed *= diskRotationSpeedMultiplier; let vx_tangential = -speed * Math.sin(angle); let vy_tangential =  speed * Math.cos(angle); const scatterMagnitude = velocityRandomnessFactor * speed; const vx_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude; const vy_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude; const final_vx = vx_tangential + vx_scatter; const final_vy = vy_tangential + vy_scatter; bodies.push(new CelestialBody(posX, posY, final_vx, final_vy, particleMass)); } console.log(`Generated disk with ${numObjects} particles and a central mass of ${centralMassValue}.`); }
+        
+        document.getElementById('generateStaticGridButton').addEventListener('click', generateStaticGrid);
+        function generateStaticGrid() { const rows = parseInt(document.getElementById('gridRows').value) || 5; const cols = parseInt(document.getElementById('gridCols').value) || 5; const spacing = parseFloat(document.getElementById('gridSpacing').value) || 50; const mass = currentSpawnMass; const totalWidth = (cols - 1) * spacing; const totalHeight = (rows - 1) * spacing; const startX = view.offsetX - totalWidth / 2; const startY = view.offsetY - totalHeight / 2; for (let r = 0; r < rows; r++) { for (let c = 0; c < cols; c++) { const posX = startX + c * spacing; const posY = startY + r * spacing; bodies.push(new CelestialBody(posX, posY, 0, 0, mass)); } } console.log(`Generated a ${rows}x${cols} static grid with spacing ${spacing} and mass ${mass}.`); }
+        
+        document.getElementById('generateSpiralButton').addEventListener('click', generateSpiral);
+        function generateSpiral() {
+            const centerX = view.offsetX; const centerY = view.offsetY;
+            const { centralMass, numObjects, numArms, startRadius, endRadius, tightness, armSpread, particleMass, rotationSpeed, velRandomness, mirror } = currentSpiralParams;
+            if (centralMass > 0) { bodies.push(new CelestialBody(centerX, centerY, 0, 0, centralMass)); }
+            const objectsPerArm = Math.floor(numObjects / numArms); const angleBetweenArms = (2 * Math.PI) / numArms;
+            const a = startRadius; const b = mirror ? -tightness : tightness;
+            for (let arm = 0; arm < numArms; arm++) {
+                const armOffsetAngle = arm * angleBetweenArms;
+                for(let i=0; i < objectsPerArm; i++) {
+                    const currentRTarget = startRadius + (endRadius - startRadius) * (i / Math.max(1, objectsPerArm -1));
+                    if (currentRTarget < startRadius || currentRTarget <= 0) continue;
+                    let thetaBase;
+                    if (b !== 0 && a !== 0 && currentRTarget/a > 0 && Math.log(currentRTarget/a) !== -Infinity) { thetaBase = (1 / b) * Math.log(currentRTarget / a); } 
+                    else if (b === 0) { thetaBase = (i / Math.max(1, objectsPerArm -1)) * 2 * Math.PI; } 
+                    else { thetaBase = Math.random() * 5 * Math.PI; } // Fallback
+                    const finalAngle = thetaBase + armOffsetAngle;
+                    let rActual = (b === 0) ? currentRTarget : a * Math.exp(b * thetaBase);
+                    if (rActual > endRadius * 1.2 && b !== 0) continue; 
+                    if (rActual < startRadius * 0.8 && b !== 0) continue;
+                    let posX = centerX + rActual * Math.cos(finalAngle); let posY = centerY + rActual * Math.sin(finalAngle);
+                    const spreadDist = (Math.random() - 0.5) * 2 * armSpread;
+                    posX += spreadDist * Math.sin(finalAngle); posY -= spreadDist * Math.cos(finalAngle);
+                    let speed = 0;
+                    if (rActual > 0.01) { 
+                        let M_eff = centralMass > 0 ? centralMass : (numObjects * particleMass * 0.05); // Effective central mass
+                        if (M_eff <=0) M_eff = particleMass; // ensure positive mass
+                        speed = (Math.sqrt(G * M_eff / rActual) || 1) * rotationSpeed; 
+                    }
+                    let vx_tangential = -speed * Math.sin(finalAngle); let vy_tangential =  speed * Math.cos(finalAngle);
+                    const scatterMagnitude = velRandomness * speed;
+                    const vx_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude; const vy_scatter = (Math.random() - 0.5) * 2 * scatterMagnitude;
+                    bodies.push(new CelestialBody(posX, posY, vx_tangential + vx_scatter, vy_tangential + vy_scatter, particleMass));
+                }
+            } console.log(`Generated spiral with ${numObjects} objects.`);
+        }
+
+        document.getElementById('generateBinaryStarButton').addEventListener('click', generateBinarySystem);
+        function generateBinarySystem() {
+            const centerX = view.offsetX; const centerY = view.offsetY;
+            const { massA, massB, separation, eccentricity } = currentBinaryStarParams;
+
+            if (massA <= 0 || massB <= 0 || separation <= 0) {
+                alert("Binary star masses and separation must be positive.");
+                return;
+            }
+            if (eccentricity < 0 || eccentricity >= 1) {
+                alert("Eccentricity must be between 0 (inclusive) and 1 (exclusive).");
+                return;
+            }
+
+            const M = massA + massB; // Total mass
+            // Periapsis distance (closest approach) is the input 'separation'
+            const rp = separation; 
+            // Semi-major axis a = rp / (1 - e)
+            const a = rp / (1 - eccentricity);
+
+            if (a <= 0) { alert("Invalid combination of separation and eccentricity leading to non-positive semi-major axis."); return;}
+
+            // Positions relative to Center of Mass (CoM) at periapsis
+            // Star A (massA) will be on the -x side, Star B (massB) on +x side of CoM
+            const r1p = (massB / M) * rp; // Distance of massA from CoM at periapsis
+            const r2p = (massA / M) * rp; // Distance of massB from CoM at periapsis
+
+            const x1 = centerX - r1p;
+            const y1 = centerY;
+            const x2 = centerX + r2p;
+            const y2 = centerY;
+
+            // Velocities at periapsis (perpendicular to separation vector, along y-axis)
+            // v_p = sqrt( (G * M / a) * ( (1+e) / (1-e) ) ) is speed of reduced mass
+            // Speeds of individual bodies relative to CoM:
+            // v1_p = (m2/M) * v_relative_at_periapsis
+            // v_relative_at_periapsis = sqrt(G*M/a * (1+e)/(1-e))
+            const v_rel_p_sq = (G * M / a) * ((1 + eccentricity) / (1 - eccentricity));
+            if (v_rel_p_sq < 0) { alert("Error calculating relative velocity squared. Check parameters."); return; }
+            const v_rel_p = Math.sqrt(v_rel_p_sq);
+            
+            const v1y =  (massB / M) * v_rel_p;
+            const v2y = -(massA / M) * v_rel_p;
+
+            bodies.push(new CelestialBody(x1, y1, 0, v1y, massA));
+            bodies.push(new CelestialBody(x2, y2, 0, v2y, massB));
+
+            console.log(`Generated binary system: M1=${massA} at (${x1.toFixed(1)},${y1.toFixed(1)}) v=(0,${v1y.toFixed(2)}); M2=${massB} at (${x2.toFixed(1)},${y2.toFixed(1)}) v=(0,${v2y.toFixed(2)})`);
+        }
+
+
+        function updatePhysics(dt) { /* ... (same as before, full robust version with precession) ... */ }
+        function draw() { /* ... (same as before, full robust version with prediction) ... */ }
+        // Ensure full updatePhysics and draw from previous are here
         function updatePhysics(dt) { for (let i = 0; i < bodies.length; i++) { for (let j = i + 1; j < bodies.length; j++) { const body1 = bodies[i]; const body2 = bodies[j]; if (!body1 || !body2 || isNaN(body1.mass) || isNaN(body2.mass) || isNaN(body1.x) || isNaN(body2.x)) { continue; } const dx = body2.x - body1.x; const dy = body2.y - body1.y; let distSq = dx * dx + dy * dy; if (isNaN(distSq) || distSq <= 0) { continue; } const dist = Math.sqrt(distSq); if (dist < body1.radius + body2.radius) { const totalMass = body1.mass + body2.mass; if (isNaN(totalMass) || totalMass <=0) { continue; } const newVx = (body1.mass * body1.vx + body2.mass * body2.vx) / totalMass; const newVy = (body1.mass * body1.vy + body2.mass * body2.vy) / totalMass; let absorber, absorbed; if (body1.mass >= body2.mass) { absorber = body1; absorbed = body2; } else { absorber = body2; absorbed = body1; } absorber.mass = totalMass; absorber.vx = newVx; absorber.vy = newVy; absorber.radius = Math.max(1, Math.pow(absorber.mass, 1/3) * 0.15 + 0.5); absorber.color = getColorForMass(absorber.mass); if (showTracks && absorbed.history.length > 1) { persistentTracks.push({ history: [...absorbed.history], color: PERSISTENT_TRACK_COLOR }); } if (absorber === body1) { bodies.splice(j, 1); j--; } else { bodies.splice(i, 1); i--; break; } continue; } const newtonianDenominator = distSq + 0.1; let forceMagnitude = (G * body1.mass * body2.mass) / newtonianDenominator; if (PRECESSION_K_FACTOR !== 0 && distSq > 0.0001) { const precessionMultiplier = 1 + (PRECESSION_K_FACTOR / distSq); forceMagnitude *= Math.max(0, precessionMultiplier); } if(isNaN(forceMagnitude) || !isFinite(forceMagnitude)) { continue; } const forceX = forceMagnitude * dx / dist; const forceY = forceMagnitude * dy / dist; body1.applyForce(forceX, forceY); body2.applyForce(-forceX, -forceY); } } bodies.forEach(body => { if(body) body.update(dt); }); }
         function draw() { ctx.fillStyle = 'black'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.translate(canvas.width / 2, canvas.height / 2); ctx.scale(view.scale, view.scale); ctx.translate(-view.offsetX, -view.offsetY); if (showTracks) { persistentTracks.forEach(track => { if (track.history.length > 1) { ctx.beginPath(); let firstPoint = true; for (let k = 0; k < track.history.length; k++) { if(isNaN(track.history[k].x) || isNaN(track.history[k].y)) continue; if(firstPoint) { ctx.moveTo(track.history[k].x, track.history[k].y); firstPoint = false; } else { ctx.lineTo(track.history[k].x, track.history[k].y); }} if(!firstPoint) { ctx.strokeStyle = getHslaColor(track.color, TRACK_ALPHA); ctx.lineWidth = 1.5 / view.scale; ctx.stroke(); } } }); } bodies.forEach(body => { if(body) body.draw(ctx); }); if (isDraggingSpawn) { const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY); ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(currentMouseWorld.x, currentMouseWorld.y); ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 2 / view.scale; ctx.setLineDash([5 / view.scale, 5 / view.scale]); ctx.stroke(); ctx.setLineDash([]); const dx_arrow = currentMouseWorld.x - dragStartWorldX; const dy_arrow = currentMouseWorld.y - dragStartWorldY; const angle_arrow = Math.atan2(dy_arrow, dx_arrow); const arrowSize_world = 10 / view.scale; ctx.beginPath(); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI + Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI + Math.PI / 6)); ctx.moveTo(dragStartWorldX, dragStartWorldY); ctx.lineTo(dragStartWorldX + arrowSize_world * Math.cos(angle_arrow - Math.PI - Math.PI / 6), dragStartWorldY + arrowSize_world * Math.sin(angle_arrow - Math.PI - Math.PI / 6)); ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; ctx.lineWidth = 2 / view.scale; ctx.stroke(); const predictedPath = []; let probeX = dragStartWorldX; let probeY = dragStartWorldY; let probeVx = (currentMouseWorld.x - dragStartWorldX) * VELOCITY_SCALE; let probeVy = (currentMouseWorld.y - dragStartWorldY) * VELOCITY_SCALE; const probeMass = currentSpawnMass; for (let step = 0; step < PREDICTION_STEPS; step++) { let netForceX = 0; let netForceY = 0; for (const existing_body of bodies) { if (isNaN(existing_body.x) || isNaN(existing_body.y) || isNaN(existing_body.mass)) continue; const dx_p = existing_body.x - probeX; const dy_p = existing_body.y - probeY; const distSq_p = dx_p * dx_p + dy_p * dy_p; if (distSq_p > 0.0001) { const dist_p = Math.sqrt(distSq_p); let force_p_newtonian = (G * probeMass * existing_body.mass) / (distSq_p + 0.1); let force_p_total = force_p_newtonian; if (PRECESSION_K_FACTOR !== 0 && distSq_p > 0.0001) { const precessionMultiplier_p = 1 + (PRECESSION_K_FACTOR / distSq_p); force_p_total *= Math.max(0, precessionMultiplier_p); } netForceX += force_p_total * dx_p / dist_p; netForceY += force_p_total * dy_p / dist_p; } } const probeAx = netForceX / probeMass; const probeAy = netForceY / probeMass; probeVx += probeAx * PREDICTION_DT; probeVy += probeAy * PREDICTION_DT; probeX += probeVx * PREDICTION_DT; probeY += probeVy * PREDICTION_DT; predictedPath.push({ x: probeX, y: probeY }); } if (predictedPath.length > 0) { ctx.lineWidth = 1.0 / view.scale; let lastPredX = dragStartWorldX; let lastPredY = dragStartWorldY; for (let i = 0; i < predictedPath.length; i++) { const point = predictedPath[i]; if (isNaN(point.x) || isNaN(point.y)) continue; const alpha = PREDICTION_MAX_ALPHA * (1 - (i / PREDICTION_STEPS)); if (alpha <= 0.01) break;  ctx.beginPath(); ctx.moveTo(lastPredX, lastPredY); ctx.lineTo(point.x, point.y); ctx.strokeStyle = `rgba(${PREDICTION_LINE_BASE_COLOR.r}, ${PREDICTION_LINE_BASE_COLOR.g}, ${PREDICTION_LINE_BASE_COLOR.b}, ${alpha})`; ctx.stroke(); lastPredX = point.x; lastPredY = point.y; } } } ctx.restore(); if (isDraggingSpawn) { const currentMouseWorld = screenToWorld(currentMouseScreenX, currentMouseScreenY); const dragVectorLengthWorld = Math.sqrt((currentMouseWorld.x - dragStartWorldX)**2 + (currentMouseWorld.y - dragStartWorldY)**2); const powerValue = dragVectorLengthWorld * VELOCITY_SCALE * POWER_DISPLAY_SCALE_FACTOR; ctx.font = "14px Arial"; ctx.fillStyle = "rgba(200, 200, 200, 0.8)"; ctx.textAlign = "left"; const textX = currentMouseScreenX + 15; const textY = currentMouseScreenY - 15; ctx.fillText(`Power: ${powerValue.toFixed(1)}`, textX, textY); } }
+
         function gameLoop() { if (!isPaused) { updatePhysics(DT); } draw(); requestAnimationFrame(gameLoop); }
         
-        populateProtoDiskInputs();
-        setupProtoDiskParamListeners();
-        makeFieldsetCollapsible('protoDiskParamsLegend', 'protoDiskParamsContent', true); 
+        populateProtoDiskInputs(); setupProtoDiskParamListeners();
+        populateSpiralInputs(); setupSpiralParamListeners();
+        populateBinaryStarInputs(); setupBinaryStarParamListeners(); // NEW
+
+        makeFieldsetCollapsible('protoDiskParamsLegend', 'protoDiskParamsContent', false); 
+        makeFieldsetCollapsible('gridActionLegend', 'gridActionContent', false);
+        makeFieldsetCollapsible('spiralActionLegend', 'spiralActionContent', false);
+        makeFieldsetCollapsible('binaryStarActionLegend', 'binaryStarActionContent', false); // NEW
+
         gameLoop();
     </script>
 </body>
