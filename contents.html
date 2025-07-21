@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Valerock Archives</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+
+        :root {
+            --font-main: 'Lato', sans-serif;
+            --font-title: 'Cinzel', serif;
+            --color-bg: #fdf6e3; /* Parchment */
+            --color-text: #3a3228; /* Dark brown */
+            --color-border: #8b4513; /* SaddleBrown */
+            --color-header: #583e2e;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        header h1 {
+            font-family: var(--font-title);
+            font-weight: 700;
+            color: var(--color-header);
+            font-size: 3.5em;
+            margin-bottom: 0;
+            letter-spacing: 2px;
+        }
+        
+        header p {
+            font-style: italic;
+            margin-top: 5px;
+            font-size: 1.2em;
+            color: var(--color-header);
+        }
+
+        .divider {
+            border: 0;
+            height: 2px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--color-border), rgba(0, 0, 0, 0));
+            margin: 40px 0;
+        }
+
+        .contents-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .content-link {
+            display: block;
+            padding: 25px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--color-text);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .content-link:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border-color: var(--color-header);
+        }
+
+        .content-link h2 {
+            font-family: var(--font-title);
+            color: var(--color-header);
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+
+        .content-link p {
+            margin: 0;
+            font-size: 1em;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>The Valerock Archives</h1>
+            <p>The Collected Wisdom of Our Society</p>
+        </header>
+
+        <hr class="divider">
+
+        <main>
+            <p style="font-size: 1.1em;">Welcome, Citizen. Within this archive lie the foundational documents of Valerock. Study them to understand our structure, our history, and our laws. Knowledge of the Compact is the duty of all who call this land home.</p>
+            <div class="contents-grid">
+                <a href="society.html" class="content-link">
+                    <h2>The Society</h2>
+                    <p>Discover the structure of our government, the purpose of the Five Guilds, and the rhythm of our daily lives.</p>
+                </a>
+                <a href="firstdays.html" class="content-link">
+                    <h2>The First Days</h2>
+                    <p>Read the chronicle of our founding, from the chaotic landing to the establishment of the formal Guilds.</p>
+                </a>
+                <a href="codeofconduct.html" class="content-link">
+                    <h2>The Basic Code of Conduct</h2>
+                    <p>Learn the fundamental laws of Valerock that govern property, civility, and justice for all citizens.</p>
+                </a>
+            </div>
+        </main>
+
+        <footer>
+            <p>May our foundations be strong and our future bright.</p>
+        </footer>
+    </div>
+
+</body>
+</html>
