@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Founding Chronicle</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+
+        :root {
+            --font-main: 'Lato', sans-serif;
+            --font-title: 'Cinzel', serif;
+            --color-bg: #fdf6e3; /* Parchment */
+            --color-text: #3a3228; /* Dark brown */
+            --color-border: #8b4513; /* SaddleBrown */
+            --color-header: #583e2e;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: #f5efdc; /* Slightly darker parchment */
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 2px dashed var(--color-border);
+            border-radius: 5px;
+            padding: 20px 40px;
+        }
+
+        header h1 {
+            font-family: var(--font-title);
+            font-weight: 700;
+            text-align: center;
+            color: var(--color-header);
+            font-size: 3em;
+            margin-bottom: 0;
+        }
+        
+        header p {
+            text-align: center;
+            font-style: italic;
+            margin-top: 5px;
+            color: var(--color-header);
+        }
+
+        h2 {
+            font-family: var(--font-title);
+            color: var(--color-header);
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 5px;
+            margin-top: 40px;
+            font-size: 2.2em;
+        }
+        
+        h3 {
+            font-family: var(--font-main);
+            font-weight: 700;
+            color: var(--color-header);
+            margin-top: 30px;
+            font-size: 1.5em;
+        }
+
+        ul {
+            list-style-type: '— ';
+            padding-left: 20px;
+        }
+
+        strong {
+            font-weight: 700;
+            color: #b22222;
+        }
+
+        .task-force {
+            padding-left: 15px;
+            border-left: 3px solid #ccc;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>The Founding Chronicle</h1>
+            <p>A Record of the First 72 Hours</p>
+        </header>
+
+        <main>
+            <p>Before the Compact, before the Guilds, there was only the struggle to survive. This chronicle details the coordinated plan that transformed a scattered group of survivors into the society of Valerock. Let it serve as a reminder of our humble beginnings and the power of cooperation.</p>
+
+            <section id="day1">
+                <h2>Day 1: The First Steps</h2>
+                <h3>Morning: The Great Gathering</h3>
+                <ul>
+                    <li><strong>The Rally:</strong> All citizens converged on the town center, knapping a Stone Axe and Stone Knife.</li>
+                    <li><strong>The Founding Party:</strong> Under the direction of the Founding Warden, four critical task forces were formed:</li>
+                </ul>
+                <div class="task-force">
+                    <p><strong>Forager Force:</strong> Tasked with harvesting all edible berries, mushrooms, and wild vegetables.</p>
+                    <p><strong>Fuel & Log Force:</strong> Tasked with gathering dry sticks and chopping trees for essential firewood.</p>
+                    <p><strong>Clay & Stone Force:</strong> Tasked with collecting vast quantities of clay from the nearest water source.</p>
+                    <p><strong>Cattail Force:</strong> Tasked with gathering cattail rushes for baskets and roots for sustenance.</p>
+                </div>
+                <h3>Afternoon: The Race Against the Sun</h3>
+                <ul>
+                    <li>A battery of communal firepits was constructed and lit by the Camp Master.</li>
+                    <li>The first communal meal of cooked roots and mushrooms was prepared and distributed.</li>
+                    <li>Using dry grass, every citizen crafted a straw bed, establishing a safe, shared respawn point.</li>
+                </ul>
+                <h3>Evening: Securing the Night</h3>
+                <ul>
+                    <li>A perimeter of torches was established to light the camp.</li>
+                    <li><strong>Synchronized Sleep:</strong> In the most critical act of coordination, all citizens slept at the same time, allowing the night to pass instantly and safely.</li>
+                </ul>
+            </section>
+
+            <section id="day2">
+                <h2>Day 2: Laying the Foundation</h2>
+                <ul>
+                    <li><strong>The Pottery Initiative:</strong> The Pottery Team began mass production with a strict priority: Bowls for all, then Cooking Pots, Crocks, and finally, Pickaxe Molds and Crucibles for the coming metal age.</li>
+                    <li><strong>The Basket Initiative:</strong> All citizens crafted a reed basket from the gathered cattails, immediately increasing personal inventory space and efficiency.</li>
+                    <li><strong>The First Structures:</strong> The proto-Builder's Guild began construction of a simple Larder and a communal Workshop.</li>
+                    <li>All foraging parties were under a standing order to <strong>always save the seeds</strong> from wild crops.</li>
+                </ul>
+            </section>
+            
+            <section id="day3">
+                <h2>Day 3: The Guilds Emerge</h2>
+                <ul>
+                    <li>The Founding Party was formally dissolved.</li>
+                    <li>The first fired pickaxe molds were distributed, and the <strong>Mining & Prospecting Guild</strong> was born, tasked with finding surface copper.</li>
+                    <li>The Pottery Team became the core of the new <strong>Smithing & Crafting Guild</strong>, preparing to smelt the first ores.</li>
+                    <li>A dedicated team formed the <strong>Lumber & Farming Guild</strong>, tilling the first farm plot and managing the vital firewood supply.</li>
+                    <li>Explorers were formalized into the <strong>Hunter & Charter Guild</strong>, tasked with mapping the surrounding lands.</li>
+                    <li>The builders were formally established as the <strong>Builder's Guild</strong>, continuing their work on communal structures.</li>
+                    <li>By evening, the Founding Warden appointed the first five Wardens, the Valerock Compact was enacted, and the age of society had begun.</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+</body>
+</html>
