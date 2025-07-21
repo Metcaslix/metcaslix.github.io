@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Valerock Compact</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+
+        :root {
+            --font-main: 'Lato', sans-serif;
+            --font-title: 'Cinzel', serif;
+            --color-bg: #fdf6e3; /* Parchment */
+            --color-text: #3a3228; /* Dark brown */
+            --color-border: #8b4513; /* SaddleBrown */
+            --color-header: #583e2e;
+            --color-lf: #2e8b57; /* SeaGreen */
+            --color-mp: #696969; /* DimGray */
+            --color-sc: #b22222; /* FireBrick */
+            --color-hc: #808000; /* Olive */
+            --color-builder: #4682b4; /* SteelBlue */
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 2px solid var(--color-border);
+            border-radius: 5px;
+            padding: 20px 40px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+
+        header h1 {
+            font-family: var(--font-title);
+            font-weight: 700;
+            text-align: center;
+            color: var(--color-header);
+            font-size: 3em;
+            margin-bottom: 0;
+        }
+        
+        header p {
+            text-align: center;
+            font-style: italic;
+            margin-top: 5px;
+            color: var(--color-header);
+        }
+
+        nav {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.05);
+            border-top: 1px dashed var(--color-border);
+            border-bottom: 1px dashed var(--color-border);
+        }
+
+        nav a {
+            font-family: var(--font-title);
+            text-decoration: none;
+            color: var(--color-header);
+            margin: 0 15px;
+            font-weight: 700;
+        }
+        
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        h2 {
+            font-family: var(--font-title);
+            color: var(--color-header);
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 5px;
+            margin-top: 40px;
+        }
+        
+        h3 {
+            font-family: var(--font-title);
+            color: var(--color-header);
+            margin-top: 30px;
+        }
+
+        .guild-card {
+            border: 1px solid;
+            border-radius: 5px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255,255,255,0.7);
+        }
+
+        .guild-title {
+            font-family: var(--font-title);
+            font-size: 1.8em;
+            margin: 0;
+        }
+
+        .guild-motto {
+            font-style: italic;
+            margin-top: 0;
+        }
+
+        .lf-card { border-color: var(--color-lf); }
+        .lf-card .guild-title, .lf-card .guild-motto { color: var(--color-lf); }
+
+        .mp-card { border-color: var(--color-mp); }
+        .mp-card .guild-title, .mp-card .guild-motto { color: var(--color-mp); }
+
+        .sc-card { border-color: var(--color-sc); }
+        .sc-card .guild-title, .sc-card .guild-motto { color: var(--color-sc); }
+
+        .hc-card { border-color: var(--color-hc); }
+        .hc-card .guild-title, .hc-card .guild-motto { color: var(--color-hc); }
+
+        .builder-card { border-color: var(--color-builder); }
+        .builder-card .guild-title, .builder-card .guild-motto { color: var(--color-builder); }
+
+        .roles-list ul, .dependencies ul {
+            list-style-type: square;
+            padding-left: 20px;
+        }
+        
+        .roles-list strong {
+            font-weight: 700;
+        }
+
+        .dependencies {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .dependencies > div {
+            flex: 1;
+            padding: 10px;
+            border-radius: 3px;
+        }
+
+        .needs {
+            background-color: rgba(178, 34, 34, 0.1); /* light red */
+        }
+        
+        .provides {
+            background-color: rgba(46, 139, 87, 0.1); /* light green */
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>The Valerock Compact</h1>
+            <p>The Foundational Document for a New Society</p>
+        </header>
+
+        <nav>
+            <a href="#charter">The Charter</a>
+            <a href="#guilds">The Five Guilds</a>
+            <a href="#daily-life">Daily Life</a>
+        </nav>
+
+        <main>
+            <section id="introduction">
+                <p><strong>Greetings, prospective citizen.</strong> What you read here is the living framework for our great endeavor: a functioning, interdependent society forged in the challenging world of Vintage Story. This document, The Valerock Compact, outlines the systems of governance, the structure of our economy, and the rhythm of our daily lives. It is a testament to the idea that with structure, purpose, and cooperation, we can not only survive, but thrive. Study it well, for within these words lies the path to our shared prosperity.</p>
+            </section>
+
+            <section id="charter">
+                <h2>The Founding Charter</h2>
+                
+                <h3>The Council of Wardens</h3>
+                <p>The society shall be guided by the Council of Wardens. Each of the five Guilds is led by a Warden, a member of Master rank chosen for their wisdom and leadership. This Council is responsible for arbitrating inter-guild disputes, approving large-scale community projects, and steering the long-term strategy of Valerock.</p>
+
+                <h3>The Public-Council Voting System</h3>
+                <p>To blend direct democracy with experienced oversight, a two-tiered voting system is established:</p>
+                <ul>
+                    <li><strong>Public Vote:</strong> Most new initiatives and minor decisions begin here. All citizens may vote. Ideas that pass the public vote are then sent to the Council for ratification.</li>
+                    <li><strong>Council Vote:</strong> The Council of Wardens holds the final vote on all publicly-passed initiatives. This acts as a crucial check to ensure proposals are feasible and beneficial for the entire community. The results of Council votes, and the deliberations leading to them, shall be made public for transparency.</li>
+                </ul>
+                <p>Voting power is weighted by a citizen's contribution, determined by their highest achieved rank in any guild: Apprentice (10 votes), Journeyman (15), Master (20), and Warden (25).</p>
+
+                <h3>The Legacy Rank Principle</h3>
+                <p>Your status is a reflection of your total contribution to Valerock. Global rewards—such as voting power and rights to land—are tied to the <strong>highest rank you have ever achieved</strong>. Should a Master Smith decide to start anew as an Apprentice Farmer to serve the community's needs, they retain the global rights and respect of a Master-tier citizen. This encourages flexibility and service to the community above all else.</p>
+            </section>
+            
+            <section id="guilds">
+                <h2>The Five Guilds</h2>
+                <p>Our society is built upon the "4+1" Guild model. Four guilds act as the engines of production and exploration, while the fifth gives our society its physical form.</p>
+
+                <!-- Lumber & Farming Guild -->
+                <div class="guild-card lf-card">
+                    <h3 class="guild-title">Lumber & Farming Guild (L&F)</h3>
+                    <p class="guild-motto">From Seed and Sapling, Life.</p>
+                    <p>The Providers. This guild is the heart of the settlement, responsible for all renewable resources, from the food on our tables to the wood in our hearths.</p>
+                    <div class="roles-list">
+                        <h4>Functional Roles:</h4>
+                        <ul>
+                            <li><strong>The Farmer:</strong> Cultivates crops and manages fields.</li>
+                            <li><strong>The Forester:</strong> Manages sustainable timber harvesting and replanting.</li>
+                            <li><strong>The Rancher:</strong> Raises livestock for meat, hides, and other resources.</li>
+                            <li><strong>The Cook:</strong> Transforms raw ingredients into nourishing meals for all.</li>
+                            <li><strong>The Burner:</strong> Produces the vast quantities of charcoal needed for industry.</li>
+                        </ul>
+                    </div>
+                    <div class="dependencies">
+                        <div class="needs">
+                            <h4>Needs From:</h4>
+                            <ul>
+                                <li><strong>S&C:</strong> All tools (Axes, Hoes, Knives), Cooking Pots</li>
+                                <li><strong>Builder's Guild:</strong> Barns, coops, preparation of farmland</li>
+                            </ul>
+                        </div>
+                        <div class="provides">
+                            <h4>Provides To:</h4>
+                            <ul>
+                                <li><strong>All:</strong> Food & Sustenance</li>
+                                <li><strong>S&C:</strong> Charcoal, Wood, Flax, Leather, Resin</li>
+                                <li><strong>Builder's Guild:</strong> Timber</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mining & Prospecting Guild -->
+                <div class="guild-card mp-card">
+                    <h3 class="guild-title">Mining & Prospecting Guild (M&P)</h3>
+                    <p class="guild-motto">From Darkness, Progress.</p>
+                    <p>The Foundation. This guild is the engine of technological advancement, delving into the earth to extract the stone, metals, and minerals that fuel our progress.</p>
+                    <div class="roles-list">
+                        <h4>Functional Roles:</h4>
+                        <ul>
+                            <li><strong>The Prospector:</strong> Surveys the land to locate valuable mineral deposits.</li>
+                            <li><strong>The Miner:</strong> Extracts ores from deep within the earth and ensures mine safety.</li>
+                            <li><strong>The Quarrier:</strong> Gathers bulk materials like stone, sand, and clay from surface deposits.</li>
+                        </ul>
+                    </div>
+                    <div class="dependencies">
+                        <div class="needs">
+                            <h4>Needs From:</h4>
+                            <ul>
+                                <li><strong>S&C:</strong> Picks, Shovels, Hammers, Lanterns</li>
+                                <li><strong>L&F:</strong> Lumber for mine supports</li>
+                                <li><strong>H&C:</strong> Maps of promising new territories</li>
+                            </ul>
+                        </div>
+                        <div class="provides">
+                            <h4>Provides To:</h4>
+                            <ul>
+                                <li><strong>S&C:</strong> Metal Ores, Clay, Salt</li>
+                                <li><strong>Builder's Guild:</strong> Stone, Sand, Gravel, Clay</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smithing & Crafting Guild -->
+                <div class="guild-card sc-card">
+                    <h3 class="guild-title">Smithing & Crafting Guild (S&C)</h3>
+                    <p class="guild-motto">With Hammer and Flame, Order.</p>
+                    <p>The Enablers. This guild is the industrial heart of Valerock, transforming raw materials into the tools, weapons, armor, and pottery that every other guild relies upon.</p>
+                    <div class="roles-list">
+                        <h4>Functional Roles:</h4>
+                        <ul>
+                            <li><strong>The Blacksmith:</strong> Forges metal into tools, weapons, and armor.</li>
+                            <li><strong>The Potter:</strong> Crafts clay into storage, cookware, and industrial components.</li>
+                            <li><strong>The Tailor:</strong> Weaves fibers and works leather into clothing and gear.</li>
+                            <li><strong>The Fitter:</strong> Assembles finished components into ready-to-use items.</li>
+                        </ul>
+                    </div>
+                    <div class="dependencies">
+                        <div class="needs">
+                            <h4>Needs From:</h4>
+                            <ul>
+                                <li><strong>M&P:</strong> Metal Ores, Clay</li>
+                                <li><strong>L&F:</strong> Charcoal, Wood, Flax, Hides, Fat</li>
+                                <li><strong>H&C:</strong> Hides, Bones, Fat</li>
+                            </ul>
+                        </div>
+                        <div class="provides">
+                            <h4>Provides To:</h4>
+                            <ul>
+                                <li><strong>All Guilds:</strong> The essential tools, weapons, and armor for every trade.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hunter & Charter Guild -->
+                <div class="guild-card hc-card">
+                    <h3 class="guild-title">Hunter & Charter Guild (H&C)</h3>
+                    <p class="guild-motto">Beyond the Walls, Wisdom.</p>
+                    <p>The Vanguard. This guild is our eyes and ears in the untamed wilds, responsible for hunting, foraging, exploration, and charting the unknown.</p>
+                    <div class="roles-list">
+                        <h4>Functional Roles:</h4>
+                        <ul>
+                            <li><strong>The Hunter:</strong> Tracks and hunts wild game for meat and hides.</li>
+                            <li><strong>The Forager:</strong> Gathers edible and useful wild plants.</li>
+                            <li><strong>The Charter:</strong> Explores and maps new territories, providing invaluable intelligence.</li>
+                            <li><strong>The Scout:</strong> Protects the expeditionary party from the dangers of the wild.</li>
+                        </ul>
+                    </div>
+                    <div class="dependencies">
+                        <div class="needs">
+                            <h4>Needs From:</h4>
+                            <ul>
+                                <li><strong>S&C:</strong> Weapons, Armor, Bags</li>
+                                <li><strong>L&F:</strong> Preserved foods for long journeys</li>
+                            </ul>
+                        </div>
+                        <div class="provides">
+                            <h4>Provides To:</h4>
+                            <ul>
+                                <li><strong>L&F/S&C:</strong> Wild Game, Hides, Foraged Goods</li>
+                                <li><strong>All:</strong> Maps, Intelligence on threats and resources</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Builder's Guild -->
+                <div class="guild-card builder-card">
+                    <h3 class="guild-title">The Builder's Guild</h3>
+                    <p class="guild-motto">Upon this Land, a Legacy.</p>
+                    <p>The Architects. This unique guild is the canvas upon which our society is painted. It is a fluid collective of specialists who design and construct the infrastructure, defenses, and homes of Valerock, often contracting labor from other guilds for large projects.</p>
+                    <div class="roles-list">
+                        <h4>Specializations:</h4>
+                        <ul>
+                            <li><strong>The Terraformer:</strong> Shapes the very land for construction projects.</li>
+                            <li><strong>The Structural Specialist:</strong> Raises the frames, walls, and roofs of our buildings.</li>
+                            <li><strong>The Finisher:</strong> Applies the aesthetic and decorative touches that give a building character.</li>
+                            <li><strong>The Infrastructure Engineer:</strong> Builds the roads, bridges, and walls that connect us and keep us safe.</li>
+                        </ul>
+                    </div>
+                    <div class="dependencies">
+                        <div class="needs">
+                            <h4>Needs From:</h4>
+                            <ul>
+                                <li><strong>L&F & M&P:</strong> Massive quantities of wood and stone.</li>
+                                <li><strong>S&C:</strong> Building tools, nails, and fixtures.</li>
+                                <li><strong>All Guilds:</strong> Contracted labor for large-scale projects.</li>
+                            </ul>
+                        </div>
+                        <div class="provides">
+                            <h4>Provides To:</h4>
+                            <ul>
+                                <li><strong>All:</strong> A safe, functional, and beautiful community to live in.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="daily-life">
+                <h2>The Rhythm of Daily Life</h2>
+                <p>To ensure both productivity and personal freedom, the following daily structure has been decreed by the founding Council.</p>
+                
+                <h3>Standard Working Hours</h3>
+                <p>The official guild workday is from <strong>8 o'clock in the morning until 4 o'clock in the afternoon</strong>. Citizens are expected to report to their Guild Warden for their duties during this time. The hours outside of this are your own.</p>
+                
+                <h3>Sustenance & Autonomy</h3>
+                <p>Each citizen is responsible for their own well-being. The L&F Guild's Mess Hall will provide daily meals, but it is up to each individual to ensure they are fed, rested, and prepared for the day's work. A community-wide bedtime of <strong>10 o'clock at night</strong> is encouraged to ensure all are rested.</p>
+                
+                <h3>Days of Rest</h3>
+                <p>The year is structured into 30-day months. To honor the hard work of every citizen, every fifth day shall be a day of rest. These days—the <strong>5th, 10th, 15th, 20th, 25th, and 30th</strong> of each month—are free for personal projects, exploration, or simple leisure.</p>
+                
+            </section>
+        </main>
+
+        <footer>
+            <p>The Valerock Compact. Forged in collaboration with the founder, metcas.</p>
+            <p>May our foundations be strong and our future bright.</p>
+        </footer>
+    </div>
+
+</body>
+</html>
