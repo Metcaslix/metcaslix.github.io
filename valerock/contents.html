@@ -10,10 +10,12 @@
         :root {
             --font-main: 'Lato', sans-serif;
             --font-title: 'Cinzel', serif;
-            --color-bg: #fdf6e3; /* Parchment */
-            --color-text: #3a3228; /* Dark brown */
-            --color-border: #8b4513; /* SaddleBrown */
-            --color-header: #583e2e;
+            --color-bg: #fdf6e3; /* Light: Parchment */
+            --color-text: #3a3228; /* Light: Dark brown */
+            --color-border: #8b4513; /* Light: SaddleBrown */
+            --color-header: #583e2e; /* Light: Dark Header Brown */
+            --color-link-bg: rgba(255, 255, 255, 0.6);
+            --color-divider: var(--color-border);
         }
 
         body {
@@ -23,6 +25,7 @@
             line-height: 1.6;
             margin: 0;
             padding: 40px 20px;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
@@ -50,7 +53,7 @@
         .divider {
             border: 0;
             height: 2px;
-            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--color-border), rgba(0, 0, 0, 0));
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--color-divider), rgba(0, 0, 0, 0));
             margin: 40px 0;
         }
 
@@ -64,12 +67,12 @@
         .content-link {
             display: block;
             padding: 25px;
-            background-color: rgba(255, 255, 255, 0.6);
+            background-color: var(--color-link-bg);
             border: 2px solid var(--color-border);
             border-radius: 8px;
             text-decoration: none;
             color: var(--color-text);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
         }
         
         .content-link:hover {
@@ -95,6 +98,22 @@
             margin-top: 60px;
             font-size: 0.9em;
             color: #666;
+        }
+        
+        /* DARK MODE STYLES */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #282c34; /* Dark: Deep Slate */
+                --color-text: #e2e8f0; /* Dark: Light Gray/Blue */
+                --color-border: #a89984; /* Dark: Aged Papyrus */
+                --color-header: #f5e6c8; /* Dark: Illuminated Text */
+                --color-link-bg: rgba(0, 0, 0, 0.25);
+                --color-divider: var(--color-border);
+            }
+
+            footer {
+                color: #999;
+            }
         }
     </style>
 </head>
