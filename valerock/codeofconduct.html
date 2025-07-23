@@ -10,10 +10,15 @@
         :root {
             --font-main: 'Lato', sans-serif;
             --font-title: 'Cinzel', serif;
-            --color-bg: #fdf6e3; /* Parchment */
-            --color-text: #3a3228; /* Dark brown */
-            --color-border: #8b4513; /* SaddleBrown */
+            --color-bg: #fdf6e3; /* Light: Parchment */
+            --color-text: #3a3228; /* Light: Dark brown */
+            --color-border: #8b4513; /* Light: SaddleBrown */
             --color-header: #583e2e;
+            --color-container-bg: #fbf9f4;
+            --color-preamble-text: #614d40;
+            --color-h2-border: #ccc;
+            --color-judicial-bg: rgba(0,0,0,0.03);
+            --color-judicial-border: #ddd;
         }
 
         body {
@@ -23,75 +28,44 @@
             line-height: 1.7;
             margin: 0;
             padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
             max-width: 800px;
             margin: 20px auto;
-            background-color: #fbf9f4;
+            background-color: var(--color-container-bg);
             border: 1px solid var(--color-border);
             padding: 2em 3em;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
-        header h1 {
-            font-family: var(--font-title);
-            font-weight: 700;
-            text-align: center;
-            color: var(--color-header);
-            font-size: 2.5em;
-            margin: 0 0 20px 0;
-            border-bottom: 2px double var(--color-border);
-            padding-bottom: 15px;
-        }
-        
-        .preamble {
-            text-align: center;
-            font-style: italic;
-            font-size: 1.1em;
-            margin-bottom: 30px;
-            color: #614d40;
-        }
+        header h1 { font-family: var(--font-title); font-weight: 700; text-align: center; color: var(--color-header); font-size: 2.5em; margin: 0 0 20px 0; border-bottom: 2px double var(--color-border); padding-bottom: 15px; }
+        .preamble { text-align: center; font-style: italic; font-size: 1.1em; margin-bottom: 30px; color: var(--color-preamble-text); }
+        article { margin-bottom: 30px; }
+        h2 { font-family: var(--font-title); font-weight: 700; color: var(--color-header); font-size: 1.6em; border-bottom: 1px solid var(--color-h2-border); padding-bottom: 5px; margin-bottom: 15px; }
+        ul { list-style-type: disc; padding-left: 25px; }
+        li { margin-bottom: 10px; }
+        .judicial-section { margin-top: 40px; padding: 20px; background-color: var(--color-judicial-bg); border: 1px solid var(--color-judicial-border); border-radius: 4px; }
+        strong { font-weight: 700; }
 
-        article {
-            margin-bottom: 30px;
+        /* DARK MODE STYLES */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #282c34;
+                --color-text: #e2e8f0;
+                --color-border: #a89984;
+                --color-header: #f5e6c8;
+                --color-container-bg: #323843;
+                --color-preamble-text: #bdae93;
+                --color-h2-border: #555;
+                --color-judicial-bg: rgba(0,0,0,0.25);
+                --color-judicial-border: #4a5058;
+            }
         }
-
-        h2 {
-            font-family: var(--font-title);
-            font-weight: 700;
-            color: var(--color-header);
-            font-size: 1.6em;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
-        }
-        
-        ul {
-            list-style-type: disc;
-            padding-left: 25px;
-        }
-        
-        li {
-            margin-bottom: 10px;
-        }
-
-        .judicial-section {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: rgba(0,0,0,0.03);
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        strong {
-            font-weight: 700;
-        }
-
     </style>
 </head>
 <body>
-
     <div class="container">
         <header>
             <h1>The Basic Code of Conduct</h1>
@@ -99,7 +73,6 @@
 
         <main>
             <p class="preamble">To ensure the prosperity, fairness, and mutual respect upon which our society is built, this Basic Code of Conduct is established as the foundational law of the land. Every citizen of Valerock, regardless of rank or guild, is bound by these articles. This is a living document, to be ratified and amended by the Council and the people as our society evolves.</p>
-
             <article>
                 <h2>Article I: The Sanctity of Property</h2>
                 <ul>
@@ -108,7 +81,6 @@
                     <li>The willful destruction or defacement of another citizen's property or any community building (griefing) is a severe offense.</li>
                 </ul>
             </article>
-
             <article>
                 <h2>Article II: The Principle of Fair Share</h2>
                 <ul>
@@ -116,7 +88,6 @@
                     <li>The hoarding of tools distributed by Guild Wardens or the misrepresentation of need to acquire excess supply is a punishable offense.</li>
                 </ul>
             </article>
-
             <article>
                 <h2>Article III: The Law of the Land</h2>
                 <ul>
@@ -124,7 +95,6 @@
                     <li>Unauthorized modification of the landscape in a way that endangers or significantly inconveniences the community is forbidden.</li>
                 </ul>
             </article>
-
             <article>
                 <h2>Article IV: The Mandate of Civility</h2>
                 <ul>
@@ -132,7 +102,6 @@
                     <li>Disagreements are to be handled through civil discourse or official mediation, not personal attacks.</li>
                 </ul>
             </article>
-            
             <article>
                 <h2>Article V: The Oath of the Guildsman</h2>
                 <ul>
@@ -140,22 +109,18 @@
                     <li>Consistent and willful negligence of one's duties is an offense against one's Guild and the community that relies upon it.</li>
                 </ul>
             </article>
-
             <article>
                 <h2>Article VI: The Supremacy of the Compact</h2>
                 <ul>
                     <li>Attempting to circumvent the systems of governance outlined in the Valerock Compact through exploits, cheating, or other forms of bad-faith manipulation is an offense against the entire society.</li>
                 </ul>
             </article>
-            
             <section class="judicial-section">
                 <h2>Judicial Procedure</h2>
                 <p><strong>Intra-Guild Offenses:</strong> Violations occurring within a single guild fall under the initial jurisdiction of the Guild's Warden.</p>
                 <p><strong>Inter-Guild Offenses:</strong> Violations crossing guild lines <strong>must</strong> be immediately escalated to the Council of Wardens for arbitration. These cases shall be given the highest priority.</p>
             </section>
-
         </main>
     </div>
-
 </body>
 </html>
