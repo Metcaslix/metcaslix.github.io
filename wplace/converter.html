@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wplace.live Image Converter</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f0f0; color: #333; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #mascot-container {
+            margin-bottom: 15px;
+        }
+        #mascot-container img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%; /* Makes the image circular */
+            border: 3px solid #fff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            background-color: #e0e0e0; /* Visible even with a transparent src */
+            object-fit: cover; /* Ensures your image fits well */
+        }
+        h1, h2 { text-align: center; color: #2c3e50; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; margin-top: 20px; }
+        .canvas-wrapper { border: 2px solid #bdc3c7; padding: 10px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        canvas { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; display: block; }
+        .controls { background-color: #ecf0f1; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; max-width: 600px;}
+        .control-group { margin: 15px 0; }
+        label, input, button { font-size: 16px; margin: 5px; vertical-align: middle; }
+        input[type="file"] { border: 1px solid #ccc; padding: 5px; border-radius: 4px; }
+        input[type="number"] { width: 80px; text-align: center; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; font-weight: bold; }
+        button:hover { background-color: #2980b9; }
+        #spinner { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        .tooltip { font-size: 12px; color: #7f8c8d; display: block; margin-top: 2px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="mascot-container">
+        <!-- !!! REPLACE THIS SRC WITH YOUR MASCOT IMAGE !!! -->
+        <img src="themetcaslowres.png" alt="Mascot">
+    </div>
+
+    <h1>Wplace.live Image Converter by metcas</h1>
+    <div class="controls">
+        <div class="control-group">
+            <label for="imageLoader">1. Upload Image:</label>
+            <input type="file" id="imageLoader" name="imageLoader" accept="image/png, image/jpeg"/>
+        </div>
+        <div class="control-group">
+            <label for="widthInput">2. Set Output Width:</label>
+            <input type="number" id="widthInput" min="1" value="128">
+        </div>
+        <div class="control-group">
+            <label for="ditherToggle">3. Enable Dithering:</label>
+            <input type="checkbox" id="ditherToggle" checked>
+            <span class="tooltip">Creates smooth gradients using patterns.</span>
+            <br>
+            <label for="lowThresholdToggle">↳ Solid Priority:</label>
+            <input type="checkbox" id="lowThresholdToggle" checked>
+            <span class="tooltip">Prevents dithering in solid color areas. (Requires dithering to be enabled)</span>
+        </div>
+        <button id="processButton">Process Image</button>
+    </div>
+
+    <div id="spinner"></div>
+
+    <div class="container">
+        <div class="canvas-wrapper">
+            <h2>Original</h2>
+            <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-wrapper">
+            <h2>Wplace.live Palette</h2>
+            <canvas id="outputCanvas"></canvas>
+        </div>
+    </div>
+
+<script>
+    // --- Wplace.live Color Palette (65 Colors) ---
+    const palette = [
+        [0, 0, 0], [60, 60, 60], [120, 120, 120], [170, 170, 170], [210, 210, 210],
+        [255, 255, 255], [96, 0, 24], [165, 14, 30], [237, 28, 36], [250, 128, 114],
+        [228, 92, 26], [255, 127, 39], [246, 170, 9], [249, 221, 59], [255, 250, 188],
+        [156, 132, 49], [197, 173, 49], [232, 212, 95], [74, 107, 58], [90, 148, 74],
+        [132, 197, 115], [14, 185, 104], [19, 230, 123], [135, 255, 94], [12, 129, 110],
+        [0, 168, 143], [0, 229, 188], [15, 121, 159], [0, 183, 228], [135, 206, 235],
+        [125, 199, 255], [77, 49, 184], [74, 66, 132], [122, 113, 196], [181, 174, 241],
+        [142, 31, 142], [196, 30, 196], [255, 0, 255], [255, 182, 193], [155, 82, 73],
+        [209, 128, 120], [250, 182, 164], [219, 164, 99], [123, 99, 82], [156, 132, 107],
+        [214, 181, 148], [209, 128, 81], [255, 197, 165], [109, 100, 63], [148, 140, 107],
+        [205, 197, 158], [51, 57, 65], [109, 117, 141], [179, 185, 209], [165, 0, 33],
+        [96, 0, 0], [0, 68, 27], [0, 31, 92], [61, 0, 122], [255, 0, 127],
+        [40, 40, 40], [20, 20, 20], [102, 51, 0]
+    ];
+    
+    // A threshold for the squared color distance. If a color is "closer" than this,
+    // we won't dither it in Solid Priority mode. This value can be tuned for different effects.
+    const DITHER_THRESHOLD = 3500; 
+
+    const imageLoader = document.getElementById('imageLoader');
+    const processButton = document.getElementById('processButton');
+    const widthInput = document.getElementById('widthInput');
+    const ditherToggle = document.getElementById('ditherToggle');
+    const lowThresholdToggle = document.getElementById('lowThresholdToggle');
+    const spinner = document.getElementById('spinner');
+
+    const originalCanvas = document.getElementById('originalCanvas');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const originalCtx = originalCanvas.getContext('2d');
+    const outputCtx = outputCanvas.getContext('2d');
+
+    let originalImage = new Image();
+
+    imageLoader.addEventListener('change', (e) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            originalImage = new Image();
+            originalImage.onload = () => {
+                widthInput.value = Math.min(originalImage.width, 512);
+                processImage();
+            };
+            originalImage.src = event.target.result;
+        }
+        reader.readAsDataURL(e.target.files[0]);
+    });
+    
+    processButton.addEventListener('click', processImage);
+
+    function processImage() {
+        if (!originalImage.src) {
+            alert('Please upload an image first!');
+            return;
+        }
+
+        spinner.style.display = 'block';
+
+        setTimeout(() => {
+            const aspectRatio = originalImage.height / originalImage.width;
+            const newWidth = parseInt(widthInput.value);
+            const newHeight = Math.round(newWidth * aspectRatio);
+
+            originalCanvas.width = newWidth;
+            originalCanvas.height = newHeight;
+            originalCtx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+
+            const imageData = originalCtx.getImageData(0, 0, newWidth, newHeight);
+            const pixels = imageData.data;
+            
+            const pixelDataFloat = new Float32Array(pixels.length);
+            for(let i = 0; i < pixels.length; i++){
+                pixelDataFloat[i] = pixels[i];
+            }
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                if (pixels[i + 3] === 0) continue; // Skip transparent pixels
+
+                const originalColor = [
+                    pixelDataFloat[i],
+                    pixelDataFloat[i + 1],
+                    pixelDataFloat[i + 2]
+                ];
+
+                const closestResult = findClosestColor(originalColor, palette);
+                const newColor = closestResult.color;
+
+                pixels[i] = newColor[0];
+                pixels[i + 1] = newColor[1];
+                pixels[i + 2] = newColor[2];
+
+                if (ditherToggle.checked) {
+                    const isLowThresholdMode = lowThresholdToggle.checked;
+                    const distance = closestResult.distance;
+
+                    if (!isLowThresholdMode || distance > DITHER_THRESHOLD) {
+                        const errR = originalColor[0] - newColor[0];
+                        const errG = originalColor[1] - newColor[1];
+                        const errB = originalColor[2] - newColor[2];
+                        distributeError(pixelDataFloat, i, newWidth, errR, errG, errB);
+                    }
+                }
+            }
+            
+            outputCanvas.width = newWidth;
+            outputCanvas.height = newHeight;
+            outputCtx.putImageData(imageData, 0, 0);
+
+            spinner.style.display = 'none';
+        }, 50);
+    }
+
+    function findClosestColor(color, currentPalette) {
+        let minDistance = Infinity;
+        let closestColor = null;
+        for (const paletteColor of currentPalette) {
+            const distance = (color[0] - paletteColor[0]) ** 2 +
+                             (color[1] - paletteColor[1]) ** 2 +
+                             (color[2] - paletteColor[2]) ** 2;
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestColor = paletteColor;
+            }
+        }
+        return { color: closestColor, distance: minDistance };
+    }
+
+    function distributeError(data, i, width, errR, errG, errB) {
+        const right = i + 4;
+        const bottomLeft = i + (width * 4) - 4;
+        const bottom = i + (width * 4);
+        const bottomRight = i + (width * 4) + 4;
+
+        if (right < data.length) {
+            data[right]     += errR * 7 / 16;
+            data[right + 1] += errG * 7 / 16;
+            data[right + 2] += errB * 7 / 16;
+        }
+        if (bottomLeft < data.length) {
+            data[bottomLeft]     += errR * 3 / 16;
+            data[bottomLeft + 1] += errG * 3 / 16;
+            data[bottomLeft + 2] += errB * 3 / 16;
+        }
+        if (bottom < data.length) {
+            data[bottom]     += errR * 5 / 16;
+            data[bottom + 1] += errG * 5 / 16;
+            data[bottom + 2] += errB * 5 / 16;
+        }
+        if (bottomRight < data.length) {
+            data[bottomRight]     += errR * 1 / 16;
+            data[bottomRight + 1] += errG * 1 / 16;
+            data[bottomRight + 2] += errB * 1 / 16;
+        }
+    }
+</script>
+
+</body>
+</html>
